@@ -1,0 +1,7 @@
+{
+  "tool": "search_cve",
+  "args": {
+    "query": "remote code execution"
+    "severity": "critical",
+  }
+}

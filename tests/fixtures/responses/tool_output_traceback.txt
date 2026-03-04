@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/app/tools/search.py", line 42, in run_search
+    results = db.query(query_str)
+  File "/app/db/client.py", line 88, in query
+    cursor.execute(sql)
+  File "/app/db/cursor.py", line 15, in execute
+    raise ConnectionError("Database connection timed out after 30s")
+ConnectionError: Database connection timed out after 30s
