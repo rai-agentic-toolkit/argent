@@ -50,14 +50,14 @@ yaml = ["PyYAML"]
 name = "certifi"
 version = "2026.2.25"
 description = "Python package for providing Mozilla's CA Bundle."
-optional = false
+optional = true
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "certifi-2026.2.25-py3-none-any.whl", hash = "sha256:027692e4402ad994f1c42e52a4997a9763c646b73e4096e4d5d6db8af1d6f0fa"},
     {file = "certifi-2026.2.25.tar.gz", hash = "sha256:e887ab5cee78ea814d3472169153c2d12cd43b14bd03329a39a9c6e2e80bfba7"},
 ]
-markers = {main = "extra == \"dev\""}
 
 [[package]]
 name = "cfgv"
@@ -76,9 +76,10 @@ files = [
 name = "charset-normalizer"
 version = "3.4.4"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
-optional = false
+optional = true
 python-versions = ">=3.7"
-groups = ["dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "charset_normalizer-3.4.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:e824f1492727fa856dd6eda4f7cee25f8518a12f3c4a56a74e8095695089cf6d"},
     {file = "charset_normalizer-3.4.4-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4bd5d4137d500351a30687c2d3971758aac9a19208fc110ccb9d7188fbe709e8"},
@@ -332,9 +333,10 @@ toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
 name = "detect-secrets"
 version = "1.5.0"
 description = "Tool for detecting secrets in the codebase"
-optional = false
+optional = true
 python-versions = "*"
-groups = ["dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "detect_secrets-1.5.0-py3-none-any.whl", hash = "sha256:e24e7b9b5a35048c313e983f76c4bd09dad89f045ff059e354f9943bf45aa060"},
     {file = "detect_secrets-1.5.0.tar.gz", hash = "sha256:6bb46dcc553c10df51475641bb30fd69d25645cc12339e46c824c1e0c388898a"},
@@ -456,14 +458,14 @@ license = ["ukkonen"]
 name = "idna"
 version = "3.11"
 description = "Internationalized Domain Names in Applications (IDNA)"
-optional = false
+optional = true
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "idna-3.11-py3-none-any.whl", hash = "sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea"},
     {file = "idna-3.11.tar.gz", hash = "sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902"},
 ]
-markers = {main = "extra == \"dev\""}
 
 [package.extras]
 all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
@@ -896,9 +898,10 @@ testing = ["covdefaults (>=2.3)", "coverage (>=7.5.4)", "pytest (>=8.3.5)", "pyt
 name = "pyyaml"
 version = "6.0.3"
 description = "YAML parser and emitter for Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -974,15 +977,15 @@ files = [
     {file = "pyyaml-6.0.3-cp39-cp39-win_amd64.whl", hash = "sha256:2e71d11abed7344e42a8849600193d15b6def118602c4c176f748e4583246007"},
     {file = "pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f"},
 ]
-markers = {main = "extra == \"dev\""}
 
 [[package]]
 name = "requests"
 version = "2.32.5"
 description = "Python HTTP for Humans."
-optional = false
+optional = true
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6"},
     {file = "requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf"},
@@ -1077,9 +1080,10 @@ files = [
 name = "urllib3"
 version = "2.6.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
-optional = false
+optional = true
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main"]
+markers = "extra == \"dev\""
 files = [
     {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
     {file = "urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed"},
@@ -1124,9 +1128,9 @@ files = [
 ]
 
 [extras]
-dev = ["bandit", "httpx", "mypy", "pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "ruff", "vulture"]
+dev = ["bandit", "detect-secrets", "httpx", "mypy", "pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "ruff", "vulture"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "69ea25de0e8504a71963df0aeb7022d5a6f85000ab0f1c96d9b871817d09d08d"
+content-hash = "8dcc2904ffeee2c5c5fb964bdc2cea929e11a84da2d7a9b07cf698d2bdae6f84"

@@ -12,16 +12,16 @@ requires-python = ">=3.11"
 authors = [
     {name = "Argent Contributors"}
 ]
-keywords = ["resume", "linkedin", "pdf", "career", "job-search"]
+keywords = ["ai", "agents", "middleware", "safety", "execution-budget", "context-window"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Office/Business",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 
@@ -38,12 +38,13 @@ dev = [
     "bandit[toml]>=1.7.6",
     "pre-commit>=3.6.0",
     "vulture>=2.11",
+    "detect-secrets>=1.5.0,<2.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/jessercastro/argent"
-Repository = "https://github.com/jessercastro/argent"
-Issues = "https://github.com/jessercastro/argent/issues"
+Homepage = "https://github.com/rai-agentic-toolkit/argent"
+Repository = "https://github.com/rai-agentic-toolkit/argent"
+Issues = "https://github.com/rai-agentic-toolkit/argent/issues"
 
 [project.scripts]
 
@@ -88,9 +89,6 @@ known-first-party = ["argent"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["ARG", "PLR2004"]
-# TC001/TC003: These imports are used at runtime in Pydantic models and function args
-"src/argent/models/**/*.py" = ["TC001", "TC003"]
-"src/argent/parsers/**/*.py" = ["TC003"]
 
 # =============================================================================
 # MyPy Configuration
@@ -159,11 +157,6 @@ fail_under = 90
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv"]
 skips = ["B101"]  # Skip assert warnings in non-test code (we use them sparingly)
-
-[dependency-groups]
-dev = [
-    "detect-secrets (>=1.5.0,<2.0.0)"
-]
 
 # =============================================================================
 # Vulture Configuration (dead code detection)

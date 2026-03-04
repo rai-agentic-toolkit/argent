@@ -154,15 +154,18 @@ fix/P1-T03-date-parsing-bug
 
 ### File Placement Rules
 
-- **Models** go in `src/argent/models/`
-- **Parsers** go in `src/argent/parsers/`
-- **Generators** go in `src/argent/generators/`
-- **Agents** go in `src/argent/agents/`
-- **Agent tools** go in `src/argent/agents/tools/`
-- **API routes** go in `src/argent/api/`
-- **Utilities** go in `src/argent/utils/`
-- **Templates** go in `src/argent/templates/`
-- **Static assets** go in `src/argent/static/`
+New files belong **inside their Epic subpackage**. Only create a top-level
+subpackage when a concern is shared by two or more Epics.
+
+| What | Where | Example |
+|------|-------|---------|
+| Pipeline / middleware logic | `src/argent/pipeline/` | `pipeline/context.py` |
+| Ingress validators / parsers | `src/argent/ingress/` | `ingress/parser.py` |
+| Budget / execution counters | `src/argent/budget/` | `budget/counter.py` |
+| Trimmer strategies | `src/argent/trimmer/` | `trimmer/strategies/json_str.py` |
+| Security validators | `src/argent/security/` | `security/sql_guard.py` |
+| Shared utilities (2+ Epics) | `src/argent/utils/` | `utils/logging.py` |
+| Shared exceptions (2+ Epics) | `src/argent/exceptions/` | `exceptions.py` |
 
 ### Naming Conventions
 
@@ -312,16 +315,24 @@ When working on a task from BACKLOG.md:
 
 Use Claude's native `tool_use` capabilities directly. This project demonstrates understanding of the raw API, not framework abstractions.
 
-### Agent Structure
+### ARG Middleware Structure
+
+Argent is the **Agentic Runtime Gateway (ARG)** — a middleware library, not a
+domain application. See [ADR-0001](docs/adr/ADR-0001-package-topology.md) for
+the full package topology decision.
 
 ```
-Orchestrator
-├── Parser Agent      → Structures LinkedIn data
-├── Matcher Agent     → Scores job fit
-├── Optimizer Agent   → Improves content
-├── QA Agent          → Checks accessibility/layout
-└── HR Agent          → Checks grammar/formatting
+src/argent/
+├── pipeline/    → AgentContext state machine and middleware chain (Epic 1)
+├── ingress/     → Payload hygiene and single-pass parsing — The Shield (Epic 2)
+├── budget/      → Token/call counters and execution isolation — The Leash (Epic 3)
+├── trimmer/     → Format-aware output truncation — The Trimmer (Epic 4)
+└── security/    → Pluggable security policies — The Guard (Epic 5)
 ```
+
+The File Placement Rules table below reflects this topology. The directories
+`models/`, `parsers/`, `generators/`, `agents/` from a prior project context
+**do not apply** to this repository.
 
 ### Dependency Philosophy
 
