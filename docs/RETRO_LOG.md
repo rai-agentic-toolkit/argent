@@ -8,7 +8,23 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| ADV-001 | Add `pip-audit` to dev extras and CI `security` job to enable automated dependency vulnerability scanning before application logic lands | P1-T01 (first Epic 1 task) | DevOps review, P0-T03/T04 |
+| — | *(no open items)* | — | — |
+
+---
+
+## [2026-03-04] P1-T01/T02/T03 — Core Pipeline & AgentContext
+
+### QA
+The three new modules are clean, well-typed, and the test structure is disciplined — 100% branch coverage. Two structural patterns are now established: first, the `__setattr__` immutability guard is intentionally soft (bypassed by `object.__setattr__`); this is documented as a known limitation with a test. If the pattern recurs in budget or security epics where enforcement matters more, the team should decide upfront whether to use `__slots__` or explicit documentation. Second, the "non-fatal but observable" failure mode — handler errors write a `[argent.telemetry]`-prefixed diagnostic to stderr and continue — should be the project-wide pattern for all future non-fatal side-car operations.
+
+### UI/UX
+SKIP — pure backend library. No templates, routes, or interactive elements were added. When `src/argent/templates/` first appears (API routes, resume preview), that surface carries WCAG 2.1 AA obligations and should be flagged for review.
+
+### DevOps
+The telemetry event schema makes a deliberate and correct security decision: it emits only the enum string from `execution_state` rather than any slice of `raw_payload` or `parsed_ast`. This closed-schema pattern should be documented as a project convention as ingress and security epics add richer context fields. `pip-audit` (ADV-001) has been added to dev extras and CI, `pip install --upgrade pip` is now applied uniformly across all CI jobs, and the upper bound `<3.0.0` has been added to the pip-audit pin.
+
+### Architecture
+The Middleware callable contract — async, exception-propagation, try/finally telemetry guarantee — is now captured in ADR-0002. This was the single most consequential design decision for downstream Epics. Locking it as synchronous at the foundation would have forced a breaking change at Epic 2; the cost of going async upfront is zero. The `register_handler` asymmetric replacement semantics were eliminated by splitting into `replace_handlers()` / `add_handler()` — explicit method names are a zero-cost fix that eliminates an invisible state-dependent contract.
 
 ---
 
