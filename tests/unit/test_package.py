@@ -15,7 +15,7 @@ def test_version_string_exists() -> None:
 
 
 def test_subpackages_importable() -> None:
-    """All Epic subpackages import without error."""
+    """All Epic subpackages import without error and are namespaced under argent."""
     for mod in (
         argent.pipeline,
         argent.ingress,
@@ -23,4 +23,4 @@ def test_subpackages_importable() -> None:
         argent.trimmer,
         argent.security,
     ):
-        assert mod is not None
+        assert mod.__name__.startswith("argent.")

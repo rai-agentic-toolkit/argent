@@ -38,6 +38,7 @@ dev = [
     "bandit[toml]>=1.7.6",
     "pre-commit>=3.6.0",
     "vulture>=2.11",
+    "detect-secrets>=1.5.0,<2.0.0",
 ]
 
 [project.urls]
@@ -156,11 +157,6 @@ fail_under = 90
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv"]
 skips = ["B101"]  # Skip assert warnings in non-test code (we use them sparingly)
-
-[dependency-groups]
-dev = [
-    "detect-secrets (>=1.5.0,<2.0.0)"
-]
 
 # =============================================================================
 # Vulture Configuration (dead code detection)
