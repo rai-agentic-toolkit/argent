@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypeAlias
 
 
 class ExecutionState(enum.Enum):
@@ -21,6 +21,11 @@ class ExecutionState(enum.Enum):
     COMPLETE = "complete"
 
 
+# TODO(P2-T01): Replace with a concrete parsed-payload type once
+# src/argent/ingress/schema.py lands and the single-pass parser protocol
+# is established.  Using Any here is an intentional, temporary placeholder.
+ParsedPayload: TypeAlias = Any
+
 _IMMUTABLE_FIELDS = frozenset({"raw_payload"})
 
 
@@ -28,11 +33,12 @@ _IMMUTABLE_FIELDS = frozenset({"raw_payload"})
 class AgentContext:
     """Shared context object threaded through every middleware stage.
 
-    Args:
-        raw_payload: The original bytes submitted to the pipeline.
-            Immutable after construction.
-
     Attributes:
+        raw_payload: The original bytes submitted to the pipeline.
+            Immutable after construction.  Note: ``object.__setattr__``
+            bypasses this guard — callers who use it directly operate
+            outside the public API contract (known limitation; see
+            ``TODO(P2-T01)`` for a potential ``__slots__``-based fix).
         parsed_ast: Structured representation produced by parser middleware.
             None until populated.
         token_count: Running total of tokens consumed.  Updated by budget
@@ -43,13 +49,13 @@ class AgentContext:
     """
 
     raw_payload: bytes
-    parsed_ast: Any | None = field(default=None)
+    parsed_ast: ParsedPayload | None = field(default=None)
     token_count: int = field(default=0)
     call_count: int = field(default=0)
     execution_state: ExecutionState = field(default=ExecutionState.PENDING)
 
     def __setattr__(self, name: str, value: object) -> None:
-        """Block reassignment of immutable fields after construction."""
+        """Block accidental reassignment of immutable fields after construction."""
         if name in _IMMUTABLE_FIELDS and hasattr(self, name):
             raise AttributeError(f"'{type(self).__name__}.{name}' is immutable after construction")
         super().__setattr__(name, value)

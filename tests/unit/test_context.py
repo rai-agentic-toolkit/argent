@@ -45,7 +45,8 @@ class TestAgentContextInstantiation:
     def test_instantiation_with_required_fields(self) -> None:
         """AgentContext is created with raw_payload provided."""
         ctx = AgentContext(raw_payload=b"hello")
-        assert ctx is not None
+        assert isinstance(ctx, AgentContext)
+        assert ctx.raw_payload == b"hello"
 
     def test_raw_payload_stored_as_bytes(self) -> None:
         """raw_payload field is bytes, not str."""
@@ -113,17 +114,30 @@ class TestAgentContextMutability:
         assert ctx.call_count == 1
 
     def test_raw_payload_is_immutable_after_construction(self) -> None:
-        """raw_payload cannot be reassigned after construction."""
+        """raw_payload cannot be reassigned via normal attribute assignment."""
         ctx = AgentContext(raw_payload=b"original")
         with pytest.raises(AttributeError):
             ctx.raw_payload = b"tampered"  # type: ignore[misc]
+
+    def test_raw_payload_immutability_guard_is_bypassed_by_object_setattr(self) -> None:
+        """object.__setattr__() bypasses the immutability guard — known limitation.
+
+        The __setattr__ guard protects against accidental reassignment in normal
+        Python code.  Callers who invoke object.__setattr__() directly are
+        operating outside the public API contract.  This is a deliberate design
+        trade-off: we trust our own middleware code.  See TODO(P2-T01) in
+        context.py for a potential __slots__-based fix.
+        """
+        ctx = AgentContext(raw_payload=b"original")
+        object.__setattr__(ctx, "raw_payload", b"bypassed")
+        assert ctx.raw_payload == b"bypassed"  # bypass succeeds — known limitation
 
 
 class TestAgentContextStateTransitions:
     """Tests for execution state transition semantics."""
 
     def test_full_lifecycle(self) -> None:
-        """Context can transition through the full PENDING→RUNNING→COMPLETE lifecycle."""
+        """Context can transition through the full PENDING->RUNNING->COMPLETE lifecycle."""
         ctx = AgentContext(raw_payload=b"data")
         assert ctx.execution_state is ExecutionState.PENDING
         ctx.execution_state = ExecutionState.RUNNING

@@ -2,15 +2,14 @@
 
 Emits a 'stage_start' event before each stage and a 'stage_end' event after.
 The default handler writes JSON lines to stderr.  Custom handlers can be
-registered via :meth:`Telemetry.register_handler`.
+registered via :meth:`Telemetry.replace_handlers` and :meth:`Telemetry.add_handler`.
 
-Handler errors are caught and silenced so that telemetry failures never
-interrupt pipeline execution (telemetry is non-fatal by design).
+Handler errors produce a diagnostic line on stderr but do not interrupt
+pipeline execution — telemetry is non-fatal by design.
 """
 
 from __future__ import annotations
 
-import contextlib
 import json
 import sys
 import time
@@ -36,7 +35,8 @@ class Telemetry:
     Usage::
 
         tel = Telemetry()
-        tel.register_handler(my_handler)
+        tel.replace_handlers(my_handler)       # replace default stderr handler
+        tel.add_handler(another_handler)        # keep existing + add more
         pipeline = Pipeline(ingress=[...], telemetry=tel)
     """
 
@@ -44,26 +44,40 @@ class Telemetry:
         default_factory=lambda: [_default_handler], init=False, repr=False
     )
 
-    def register_handler(self, handler: TelemetryHandler) -> None:
-        """Replace the default handler list with *handler*.
-
-        The first call replaces the built-in stderr handler.  Subsequent calls
-        append additional handlers so every registered handler receives every
-        event.
+    def replace_handlers(self, *handlers: TelemetryHandler) -> None:
+        """Replace all current handlers with *handlers*.
 
         Args:
-            handler: Callable that receives a single event dict.
+            *handlers: One or more handler callables that each accept a single
+                event dict.  Handler errors produce a diagnostic line on stderr
+                but do not interrupt pipeline execution.
         """
-        if self._handlers == [_default_handler]:
-            self._handlers = [handler]
-        else:
-            self._handlers.append(handler)
+        self._handlers = list(handlers)
+
+    def add_handler(self, handler: TelemetryHandler) -> None:
+        """Append *handler* without removing existing handlers.
+
+        Args:
+            handler: Callable that receives a single event dict.  Handler
+                errors produce a diagnostic line on stderr but do not
+                interrupt pipeline execution.
+        """
+        self._handlers.append(handler)
 
     def _emit(self, event: dict[str, object]) -> None:
-        """Dispatch *event* to all registered handlers, swallowing errors."""
+        """Dispatch *event* to all registered handlers.
+
+        Handler errors are caught individually: a diagnostic line is written
+        to stderr and the next handler continues.  This ensures telemetry
+        failures never crash the pipeline while remaining observable.
+        """
         for handler in self._handlers:
-            with contextlib.suppress(Exception):
+            try:
                 handler(event)
+            except Exception as exc:
+                sys.stderr.write(
+                    f"[argent.telemetry] handler {handler!r} raised {exc!r}; skipping\n"
+                )
 
     def emit_start(self, stage: str, context: AgentContext) -> float:
         """Emit a 'stage_start' event and return the start timestamp (ms).

@@ -1,13 +1,14 @@
-"""Four-stage middleware pipeline for the ARG execution wrapper.
+"""Four-stage async middleware pipeline for the ARG execution wrapper.
 
 Stages execute in strict order: ingress -> pre_execution -> execution -> egress.
-Each stage is an ordered list of callables that mutate AgentContext in place.
-Exceptions from middleware propagate -- the pipeline never swallows errors.
+Each stage is an ordered list of async callables that mutate AgentContext in place.
+Exceptions from middleware propagate unchanged.  Telemetry end events are always
+emitted via try/finally so stage_start is never orphaned.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -15,14 +16,14 @@ if TYPE_CHECKING:
     from argent.pipeline.context import AgentContext
     from argent.pipeline.telemetry import Telemetry
 
-Middleware = Callable[["AgentContext"], None]
+Middleware = Callable[["AgentContext"], Awaitable[None]]
 
 _STAGE_NAMES = ("ingress", "pre_execution", "execution", "egress")
 
 
 @dataclass
 class Pipeline:
-    """Composable four-stage middleware pipeline.
+    """Composable four-stage async middleware pipeline.
 
     Args:
         ingress: Middlewares that run first (payload validation, parsing).
@@ -31,6 +32,8 @@ class Pipeline:
         egress: Middlewares that run last (output trimming, telemetry flush).
         telemetry: Optional :class:`Telemetry` instance.  When provided,
             start/end events are emitted around every stage automatically.
+            Telemetry end events are guaranteed via try/finally — stage_start
+            events are never orphaned even when middleware raises.
     """
 
     ingress: list[Middleware] = field(default_factory=list)
@@ -39,7 +42,7 @@ class Pipeline:
     egress: list[Middleware] = field(default_factory=list)
     telemetry: Telemetry | None = field(default=None)
 
-    def run(self, context: AgentContext) -> AgentContext:
+    async def run(self, context: AgentContext) -> AgentContext:
         """Execute all stages in order against *context*.
 
         Args:
@@ -50,14 +53,18 @@ class Pipeline:
 
         Raises:
             Exception: Any exception raised by a middleware propagates unchanged.
+                Telemetry ``stage_end`` is still emitted before the exception
+                propagates (try/finally guarantee).
         """
         stages = (self.ingress, self.pre_execution, self.execution, self.egress)
         for name, middlewares in zip(_STAGE_NAMES, stages, strict=True):
             start_ms: float | None = None
             if self.telemetry is not None:
                 start_ms = self.telemetry.emit_start(name, context)
-            for middleware in middlewares:
-                middleware(context)
-            if self.telemetry is not None and start_ms is not None:
-                self.telemetry.emit_end(name, context, start_ms)
+            try:
+                for middleware in middlewares:
+                    await middleware(context)
+            finally:
+                if self.telemetry is not None and start_ms is not None:
+                    self.telemetry.emit_end(name, context, start_ms)
         return context
