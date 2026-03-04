@@ -10,7 +10,7 @@ This document tracks overall project progress across all phases. Detailed task s
 
 | Phase | Epic | Status | Progress | Description |
 |-------|------|--------|----------|-------------|
-| **0** | [Foundation](docs/backlog/phase-0.md) | Not Started | 0/4 | Dev environment, tooling, CI verification |
+| **0** | [Foundation](docs/backlog/phase-0.md) | Complete | 4/4 | Dev environment, tooling, CI verification |
 | **1** | [Core Pipeline & AgentContext](docs/backlog/phase-1.md) | Not Started | 0/3 | AgentContext state machine, middleware pipeline, telemetry |
 | **2** | [Ingress Hygiene — The Shield](docs/backlog/phase-2.md) | Not Started | 0/2 | Byte-size validators, single-pass parser |
 | **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | Not Started | 0/2 | Token/call counters, tool execution wrapper |
