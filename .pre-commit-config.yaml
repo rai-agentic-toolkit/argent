@@ -1,0 +1,106 @@
+# Pre-commit hooks for Argent
+# Install with: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # ==========================================================================
+  # General hooks
+  # ==========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ==========================================================================
+  # Python formatting and linting with Ruff
+  # ==========================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ==========================================================================
+  # Type checking with MyPy
+  # ==========================================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.5.0
+          - fastapi>=0.104.0
+          - jinja2>=3.1.2
+          - anthropic>=0.7.0
+        args: [--config-file=pyproject.toml]
+        pass_filenames: false
+        entry: mypy src/
+
+  # ==========================================================================
+  # Security scanning with Bandit
+  # ==========================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.2
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml, -r, src/]
+        additional_dependencies: ["bandit[toml]"]
+
+  # ==========================================================================
+  # Secret detection with detect-secrets
+  # ==========================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: 'sample_data/.*'
+
+  # ==========================================================================
+  # Dead code detection with Vulture
+  # ==========================================================================
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.13
+    hooks:
+      - id: vulture
+        pass_filenames: false
+        args: ["src/"]
+
+  # ==========================================================================
+  # Secret detection with gitleaks
+  # ==========================================================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # ==========================================================================
+  # Commit message linting (optional but good practice)
+  # ==========================================================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.10.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+# CI configuration - fail fast on any hook failure
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [mypy, gitleaks]  # These may need special setup in CI
+  submodules: false
