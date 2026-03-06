@@ -12,7 +12,7 @@ This document tracks overall project progress across all phases. Detailed task s
 |-------|------|--------|----------|-------------|
 | **0** | [Foundation](docs/backlog/phase-0.md) | Complete | 4/4 | Dev environment, tooling, CI verification |
 | **1** | [Core Pipeline & AgentContext](docs/backlog/phase-1.md) | Complete | 3/3 | AgentContext state machine, middleware pipeline, telemetry |
-| **2** | [Ingress Hygiene — The Shield](docs/backlog/phase-2.md) | Not Started | 0/2 | Byte-size validators, single-pass parser |
+| **2** | [Ingress Hygiene — The Shield](docs/backlog/phase-2.md) | Complete | 2/2 | Byte-size validators, single-pass parser |
 | **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | Not Started | 0/2 | Token/call counters, tool execution wrapper |
 | **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Not Started | 0/2 | Format-aware truncators, dynamic budget calculator |
 | **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Not Started | 0/2 | SecurityValidator protocol, SQL AST validator |
