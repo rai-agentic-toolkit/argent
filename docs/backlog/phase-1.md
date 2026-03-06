@@ -2,8 +2,8 @@
 
 > **Goal**: Build the foundational highway — the `AgentContext` data structure, the middleware pipeline, and the observability hooks — before any individual feature is added.
 
-**Status**: Not Started
-**Progress**: 0/3 tasks complete
+**Status**: Complete
+**Progress**: 3/3 tasks complete
 
 **NFRs enforced here**: Zero-Copy / Single-Pass Parsing, Zero-Dependency Core
 
@@ -13,9 +13,9 @@
 
 | ID | Task | Status | Dependencies |
 |----|------|--------|--------------|
-| P1-T01 | Define `AgentContext` Object | Not Started | P0 Complete |
-| P1-T02 | Implement Base Middleware Pipeline | Not Started | P1-T01 |
-| P1-T03 | Build Telemetry/Observability Hooks | Not Started | P1-T02 |
+| P1-T01 | Define `AgentContext` Object | Complete | P0 Complete |
+| P1-T02 | Implement Base Middleware Pipeline | Complete | P1-T01 |
+| P1-T03 | Build Telemetry/Observability Hooks | Complete | P1-T02 |
 
 ---
 
