@@ -25,7 +25,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = []
+dependencies = [
+    "defusedxml>=0.7.0",
+]
 
 [project.optional-dependencies]
 dev = [
