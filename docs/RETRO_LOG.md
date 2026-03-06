@@ -12,6 +12,22 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 ---
 
+## [2026-03-06] P2-T01/T02 — Ingress Validators & SinglePassParser
+
+### QA
+The test discipline is strong: 89 tests, 98.48% coverage, all quality gates pass on the first GREEN commit. Three findings resolved: (1) the YAML except clause was broadened to `Exception` because `yaml.YAMLError` was not accessible from the outer except chain — restructured to `try/except ImportError/else` pattern so `yaml.YAMLError` is now properly scoped; (2) two boundary tests added (empty bytes for `DepthLimitValidator`, invalid UTF-8 bytes for `SinglePassParser`); (3) module docstring corrected to state telemetry fires only on final plaintext fallback. The `sys.stderr.write → logging.getLogger` migration also fixed the stderr-capture test, which was replaced with `caplog` — a more idiomatic and robust approach. Pattern to carry forward: use `caplog` fixtures for log assertions, not `sys.stderr` capture.
+
+### UI/UX
+SKIP — pure backend middleware library. No templates, routes, or interactive elements. Forward-looking concern: `PayloadTooLargeError` and `NestingDepthError` exception messages are currently machine-readable structured outputs. If any future UI layer surfaces them directly to end users, they will need human-readable, actionable wording meeting WCAG 3.3.1 standards.
+
+### DevOps
+Three findings resolved: (1) `sys.stderr.write` diagnostic calls replaced with `logging.getLogger(__name__)` — WARNING level; this closes the observability gap and prepares for PIIFilter integration when `src/argent/utils/` is scaffolded in a later phase; (2) `types-defusedxml>=0.7.0` and `types-PyYAML>=6.0` added to `[project.optional-dependencies].dev` with an explanatory comment about the cyclonedx/poetry constraint; (3) `.pre-commit-config.yaml` mypy hook already had the stubs listed. The parallel `sys.stderr.write` in `telemetry.py` (`[argent.telemetry]` diagnostic) is a pre-existing pattern from P1 — flagged as a forward-looking advisory for Phase 3 cleanup.
+
+### Architecture
+Two code findings and one documentation finding resolved: (1) `Telemetry._emit()` renamed to `emit()` — it was already the backbone dispatcher for `emit_start`/`emit_end` and had no reason to be private; the rename removes a cross-package private-method reach-across from `parser.py` and makes the public emit API explicit; (2) inline comment added at the `import defusedxml.ElementTree` line explaining why it is a hard runtime dep (security guarantee, not opt-in like pyyaml); (3) ADR-0003 created documenting the defusedxml selection, XXE/entity attack threat model, and rejected alternatives. The `ingress → pipeline` dependency direction (parser imports Telemetry) is acceptable given that `pipeline/` is the lowest-level shared foundation; no inversion required.
+
+---
+
 ## [2026-03-04] P1-T01/T02/T03 — Core Pipeline & AgentContext
 
 ### QA
