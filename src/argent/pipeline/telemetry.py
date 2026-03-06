@@ -64,8 +64,12 @@ class Telemetry:
         """
         self._handlers.append(handler)
 
-    def _emit(self, event: dict[str, object]) -> None:
+    def emit(self, event: dict[str, object]) -> None:
         """Dispatch *event* to all registered handlers.
+
+        This is the core public dispatcher used by :meth:`emit_start`,
+        :meth:`emit_end`, and any middleware that needs to emit an
+        arbitrary structured event (e.g. a parse-fallback warning).
 
         Handler errors are caught individually: a diagnostic line is written
         to stderr and the next handler continues.  This ensures telemetry
@@ -90,7 +94,7 @@ class Telemetry:
             Monotonic start time in milliseconds (for computing duration).
         """
         start_ms = time.monotonic() * 1000
-        self._emit(
+        self.emit(
             {
                 "event": "stage_start",
                 "stage": stage,
@@ -109,7 +113,7 @@ class Telemetry:
             start_ms: Monotonic start time returned by :meth:`emit_start`.
         """
         duration_ms = time.monotonic() * 1000 - start_ms
-        self._emit(
+        self.emit(
             {
                 "event": "stage_end",
                 "stage": stage,

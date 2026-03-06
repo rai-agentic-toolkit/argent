@@ -138,6 +138,12 @@ class TestDepthLimitValidator:
         with pytest.raises(NestingDepthError):
             await validator(ctx)
 
+    async def test_empty_bytes_passes(self) -> None:
+        """An empty payload has estimated depth 0 — always below any limit."""
+        ctx = AgentContext(raw_payload=b"")
+        await DepthLimitValidator()(ctx)
+        assert ctx.execution_state is ExecutionState.PENDING
+
 
 class TestValidatorsAsMiddleware:
     """Tests confirming validators plug into the async Pipeline."""

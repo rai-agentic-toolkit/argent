@@ -7,9 +7,8 @@ before src/argent/ingress/parser.py exists.
 from __future__ import annotations
 
 import inspect
-import sys
+import logging
 import xml.etree.ElementTree as ET
-from io import StringIO
 
 import pytest
 
@@ -87,20 +86,24 @@ class TestGracefulDegradation:
         await SinglePassParser()(ctx)
         assert ctx.parsed_ast == payload.decode("utf-8", errors="replace")
 
-    async def test_fallback_emits_stderr_diagnostic(self) -> None:
-        """A parsing failure writes a diagnostic warning to stderr."""
+    async def test_invalid_utf8_bytes_decoded_with_replacement(self) -> None:
+        """Payload with invalid UTF-8 bytes is decoded with replacement chars (U+FFFD)."""
+        payload = b"\xff\xfe not valid utf-8"
+        ctx = AgentContext(raw_payload=payload)
+        await SinglePassParser()(ctx)
+        assert isinstance(ctx.parsed_ast, str)
+        assert "\ufffd" in ctx.parsed_ast  # U+FFFD replacement character
+
+    async def test_fallback_emits_stderr_diagnostic(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A parsing failure emits a WARNING log from argent.ingress.parser."""
         payload = b'{"key": broken json'
         ctx = AgentContext(raw_payload=payload)
 
-        buf = StringIO()
-        old_stderr = sys.stderr
-        sys.stderr = buf
-        try:
+        with caplog.at_level(logging.WARNING, logger="argent.ingress.parser"):
             await SinglePassParser()(ctx)
-        finally:
-            sys.stderr = old_stderr
 
-        assert len(buf.getvalue()) > 0
+        assert len(caplog.records) > 0
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
 
 
 class TestIdempotency:

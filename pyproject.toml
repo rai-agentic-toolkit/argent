@@ -42,6 +42,11 @@ dev = [
     "vulture>=2.11",
     "detect-secrets>=1.5.0,<2.0.0",
     "pip-audit>=2.7.0,<3.0.0",
+    # Type stubs for optional/runtime deps — installed here so CI mypy matches local
+    # (poetry add fails due to cyclonedx-python-lib Python<4.0 constraint, so declared
+    #  directly in [project.optional-dependencies] instead)
+    "types-defusedxml>=0.7.0",
+    "types-PyYAML>=6.0",
 ]
 
 [project.urls]
