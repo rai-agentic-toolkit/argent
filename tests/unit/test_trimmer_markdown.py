@@ -34,6 +34,11 @@ class TestMarkdownTableTrimmerIdempotence:
         content = "just some text with no pipes"
         assert MarkdownTableTrimmer(max_chars=10).trim(content) == content
 
+    def test_multiline_non_table_returned_unchanged(self) -> None:
+        """Multi-line content without a separator row is returned unchanged."""
+        content = "line one\nline two without separator\nline three"
+        assert MarkdownTableTrimmer(max_chars=10).trim(content) == content
+
 
 class TestMarkdownTableTrimmerTruncation:
     """Header row is always preserved; body rows are dropped from the bottom."""

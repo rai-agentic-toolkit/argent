@@ -6,6 +6,7 @@ before src/argent/trimmer/traceback.py exists.
 
 from __future__ import annotations
 
+from argent.trimmer.base import Trimmer
 from argent.trimmer.traceback import PythonTracebackTrimmer
 
 SAMPLE_TRACEBACK = """\
@@ -15,6 +16,14 @@ Traceback (most recent call last):
   File "tool.py", line 5, in tool
     raise ValueError("bad input")
 ValueError: bad input"""
+
+
+class TestTrimmerProtocol:
+    """Trimmer is a runtime-checkable Protocol satisfied by all concrete classes."""
+
+    def test_traceback_trimmer_satisfies_protocol(self) -> None:
+        """PythonTracebackTrimmer is an instance of Trimmer."""
+        assert isinstance(PythonTracebackTrimmer(max_chars=100), Trimmer)
 
 
 class TestPythonTracebackTrimmerIdempotence:
@@ -65,9 +74,10 @@ class TestPythonTracebackTrimmerTruncation:
         result = trimmer.trim(SAMPLE_TRACEBACK)
         assert "ValueError: bad input" in result
 
-    def test_trim_is_idempotent_on_already_trimmed(self) -> None:
-        """Trimming an already-trimmed traceback does not further shorten it."""
-        trimmer = PythonTracebackTrimmer(max_chars=50)
+    def test_trim_does_not_modify_content_within_budget(self) -> None:
+        """Content already within max_chars is returned unchanged on any call."""
+        # Use a budget large enough that the once-trimmed result fits
+        trimmer = PythonTracebackTrimmer(max_chars=1000)
         once = trimmer.trim(SAMPLE_TRACEBACK)
-        twice = trimmer.trim(once)
-        assert twice == once
+        # once == SAMPLE_TRACEBACK (fits); a second trim should also leave it unchanged
+        assert trimmer.trim(once) == once

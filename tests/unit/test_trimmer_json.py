@@ -11,6 +11,26 @@ import json
 from argent.trimmer.json_trimmer import JsonArrayTrimmer, JsonDictTrimmer
 
 
+class TestJsonArrayTrimmerEdgeCases:
+    """Edge paths: non-list JSON, extreme budget forcing fallback tombstone."""
+
+    def test_json_object_passed_to_array_trimmer_returned_unchanged(self) -> None:
+        """A JSON object (not an array) is returned unchanged by JsonArrayTrimmer."""
+        content = json.dumps({"key": "value"})
+        assert JsonArrayTrimmer(max_chars=5).trim(content) == content
+
+    def test_extreme_budget_returns_tombstone_only_array(self) -> None:
+        """When max_chars is tiny, all items are dropped and a tombstone array is returned."""
+        items = ["a" * 50, "b" * 50]
+        content = json.dumps(items)
+        trimmer = JsonArrayTrimmer(max_chars=5)
+        result = trimmer.trim(content)
+        parsed = json.loads(result)
+        assert isinstance(parsed, list)
+        assert len(parsed) == 1
+        assert "truncated" in parsed[0]
+
+
 class TestJsonArrayTrimmerIdempotence:
     """Short arrays pass through unchanged."""
 
@@ -78,6 +98,15 @@ class TestJsonArrayTrimmerTruncation:
         trimmer = JsonArrayTrimmer(max_chars=100)
         result = trimmer.trim(content)
         assert len(result) <= 100
+
+
+class TestJsonDictTrimmerEdgeCases:
+    """Edge paths: non-dict JSON passed to DictTrimmer."""
+
+    def test_json_array_passed_to_dict_trimmer_returned_unchanged(self) -> None:
+        """A JSON array (not an object) is returned unchanged by JsonDictTrimmer."""
+        content = json.dumps([1, 2, 3])
+        assert JsonDictTrimmer(max_chars=5).trim(content) == content
 
 
 class TestJsonDictTrimmerIdempotence:
