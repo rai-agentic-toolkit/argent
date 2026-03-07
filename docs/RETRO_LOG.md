@@ -12,6 +12,22 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 ---
 
+## [2026-03-07] P3-T01/T02 — RequestBudget & ToolExecutor (The Leash)
+
+### QA
+The three primary QA findings were all resolved: (1) the asymmetric token pre-check (`remaining_tokens < 0` vs `remaining_calls <= 0`) was eliminated by delegating all pre-call arithmetic to a new `RequestBudget.check_precall(token_cost)` method — the fix is at the source rather than patched in the executor; (2) both budget enforcement tests now assert `called == []` confirming the tool was never invoked on an exhausted budget; (3) `test_construction_with_limits` was strengthened to assert `max_calls` and `max_tokens` values, not just `isinstance`. Edge case coverage added: `TestEdgeCases` documents `max_calls=0` immediate raise and negative `tokens_used` accepted without validation (documented current behaviour). `TestCheckPrecall` adds 6 focused tests for the new pre-call guard method. Pattern to carry forward: when boundary conditions differ between a pre-check and a post-check, encapsulate both in the same object (here, `RequestBudget`) so the arithmetic stays consistent and is tested in isolation.
+
+### UI/UX
+SKIP — pure backend budget/execution middleware. No templates, routes, or interactive elements added. Forward-looking: `BudgetExhaustedError` and `ToolTimeoutError` exception messages are currently machine-readable. If a future UI layer surfaces them directly, they will need human-readable, actionable wording meeting WCAG 3.3.1 standards.
+
+### DevOps
+PASS — zero new dependencies; executor uses only stdlib `asyncio`. 131 tests, 98.95% branch coverage; budget subpackage and executor at 100%. Using `run_in_executor(None, ...)` (default thread pool) rather than a custom `ThreadPoolExecutor` simplifies lifecycle — no `shutdown()` call needed. One advisory: abandoned threads post-timeout continue until the tool returns naturally (asyncio/Python thread limitation); documented in ADR-0004, no action needed at this phase.
+
+### Architecture
+Five findings, all resolved: (1) **dependency-direction** — `budget: RequestBudget` removed from `AgentContext`; `ToolExecutor` now accepts `budget` as a direct constructor argument, restoring the `pipeline/` foundation invariant from ADR-0001; (2) **async-correctness** — `execute()` is now `async def`, using `asyncio.wait_for + run_in_executor`; compliant with ADR-0002's async middleware contract; (3) **abstraction-level** — `check_precall(token_cost)` added to `RequestBudget`, removing all budget arithmetic from the executor; (4) **interface-contracts** — `execute()` parameterised with `TypeVar _T` for type-safe return inference at call sites; (5) **adr-compliance** — ADR-0004 created documenting the Option A (budget off context) decision, async timeout strategy, and `check_precall` rationale. The dependency inversion was caught one commit after GREEN — exactly the window a fast architecture review should cover. Going forward: when a new Epic type appears as a field on `AgentContext`, treat it as an automatic architecture review trigger.
+
+---
+
 ## [2026-03-06] P2-T01/T02 — Ingress Validators & SinglePassParser
 
 ### QA
