@@ -15,7 +15,7 @@
 |----|------|--------|--------------|
 | P3-T01 | Implement Stateful Token & Call Counters | Complete | P1 Complete |
 | P3-T02 | Build Tool Execution Wrapper | Complete | P3-T01 |
-| P3-T03 | Wire `ExecutionState` Transitions in `Pipeline.run()` | Not Started | P3-T01 |
+| P3-T03 | Wire `ExecutionState` Transitions in `Pipeline.run()` | Complete | P3-T01 |
 
 ---
 
@@ -79,7 +79,7 @@ Original spec referenced `context.budget` and synchronous `concurrent.futures.Th
 
 **Description**: `AgentContext.ExecutionState` has four values (`PENDING`, `RUNNING`, `HALTED`, `COMPLETE`) but `Pipeline.run()` currently never transitions state. Only `HALTED` is set, by individual validators. This task wires the two missing transitions: `RUNNING` before the first stage and `COMPLETE` after the last.
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 
@@ -87,13 +87,13 @@ As an operator monitoring pipeline execution, I need `context.execution_state` t
 
 ### Acceptance Criteria
 
-- [ ] `Pipeline.run()` sets `context.execution_state = ExecutionState.RUNNING` before iterating the first stage
-- [ ] `Pipeline.run()` sets `context.execution_state = ExecutionState.COMPLETE` after all stages finish without exception
-- [ ] `HALTED` continues to be set by individual middlewares (validators, security policies) — the pipeline does not set it
-- [ ] If a middleware raises an unhandled exception and the pipeline propagates it, `execution_state` is left as `RUNNING` (not explicitly set to `HALTED` by the pipeline — the raising middleware is responsible)
-- [ ] Existing telemetry try/finally guarantee is preserved unchanged
-- [ ] All existing pipeline tests continue to pass
-- [ ] New tests added for the RUNNING and COMPLETE transitions
+- [x] `Pipeline.run()` sets `context.execution_state = ExecutionState.RUNNING` before iterating the first stage
+- [x] `Pipeline.run()` sets `context.execution_state = ExecutionState.COMPLETE` after all stages finish without exception
+- [x] `HALTED` continues to be set by individual middlewares (validators, security policies) — the pipeline does not set it
+- [x] If a middleware raises an unhandled exception and the pipeline propagates it, `execution_state` is left as `RUNNING` (not explicitly set to `HALTED` by the pipeline — the raising middleware is responsible)
+- [x] Existing telemetry try/finally guarantee is preserved unchanged
+- [x] All existing pipeline tests continue to pass
+- [x] New tests added for the RUNNING and COMPLETE transitions (TestExecutionStateTransitions — 5 tests)
 
 ### Implementation Steps
 
