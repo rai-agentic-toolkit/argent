@@ -8,7 +8,23 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| — | *(no open items)* | — | — |
+| ADV-002 | `.claude/agents/architecture-reviewer.md` scope gate references legacy resume-builder directories (`models/`, `agents/`, `parsers/`, `generators/`, `api/`) instead of the ARG topology (`pipeline/`, `ingress/`, `budget/`, `trimmer/`, `security/`). Update the agent definition when next amended. | Next agent-definition amendment | Architecture review, docs/readme-overhaul |
+
+---
+
+## [2026-03-07] docs/readme-overhaul — README Overhaul
+
+### QA
+SKIP — pure documentation change (README.md only). No source code added, modified, or deleted. Coverage verified at 98.95% (131 tests). The new README makes factual claims about coverage, typing discipline, and methodology — all verifiable from the commit history and CI output. No inflated claims detected. The methodology section will need updating as the process evolves.
+
+### UI/UX
+SKIP — no template, route, or form changes. No UI surface area exists yet. The README references WCAG 2.1 AA as a future obligation, consistent with Priority 9 of the Constitution.
+
+### DevOps
+PASS — gitleaks clean (30 commits scanned, no leaks), bandit 0 issues. The README lists the security toolchain in the Running Tests section — good operational transparency. One advisory: the Installation section shows `pip install -e ".[dev]"` rather than `poetry install`; since the project uses Poetry for dependency management (per CLAUDE.md), future updates should show both options or note the canonical dev workflow.
+
+### Architecture
+SKIP — no structural changes in `src/`. The README accurately reflects the package topology from ADR-0001 and the dependency direction rule. All four ADRs are listed with correct phase attributions. Advisory filed: `.claude/agents/architecture-reviewer.md` scope gate still references the legacy resume-builder directories instead of the ARG topology (see Open Advisory Items table, ADV-002).
 
 ---
 
