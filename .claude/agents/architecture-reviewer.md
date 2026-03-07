@@ -16,21 +16,21 @@ Before starting your review, read:
 3. `docs/adr/` — read any ADR files to understand decisions already made
 
 Key project facts:
+- **Argent is ARG (Agentic Runtime Gateway)** — a middleware library, not a resume generator
 - No LangChain — native Claude `tool_use` only (ADR-0002)
-- Async-first design — `async def` throughout agents (ADR-0003)
-- Agent structure: Orchestrator → Parser, Matcher, Optimizer, QA, HR Agents
-- Pydantic v2 models in `src/argent/models/`
-- Domain exceptions: `argentError` → `ParseError`, `InvalidExportError`
-- Dependency direction: models ← parsers/generators ← agents ← orchestrator
+- Async-first design — `async def` throughout pipeline (ADR-0002)
+- Package topology: `pipeline/` → `ingress/`, `budget/`, `trimmer/`, `security/` (ADR-0001)
+- Dependency direction: Epic packages depend on `pipeline/` (lowest-level foundation), never the reverse
+- No `models/`, `agents/`, `parsers/`, `generators/`, `api/` directories — these are from a prior project context and do not apply
 
 ## Scope Gate — Answer This First
 
 Check the diff for changes in:
-- `src/argent/models/`
-- `src/argent/agents/`
-- `src/argent/parsers/`
-- `src/argent/generators/`
-- `src/argent/api/`
+- `src/argent/pipeline/`
+- `src/argent/ingress/`
+- `src/argent/budget/`
+- `src/argent/trimmer/`
+- `src/argent/security/`
 - Any new module (new `.py` file anywhere under `src/`)
 
 **If NONE of the above are present** (e.g., pure test change, docs/config only): Issue a SKIP. State which directories were checked.
@@ -41,17 +41,17 @@ Work through every applicable item. For each: PASS | FINDING | SKIP (with reason
 
 ### Placement & Naming
 
-**file-placement**: Is each new file in the correct directory per `CLAUDE.md`? Models in `models/`, parsers in `parsers/`, agents in `agents/`, etc. A generator in `agents/` is a finding.
+**file-placement**: Is each new file in the correct directory per `CLAUDE.md` File Placement Rules? Pipeline/middleware logic in `pipeline/`, ingress validators in `ingress/`, budget/execution in `budget/`, trimmer strategies in `trimmer/`, security validators in `security/`, shared utilities (2+ epics) in `utils/`. A trimmer class in `pipeline/` would be a finding.
 
 **naming-conventions**: Do module names use `snake_case`, classes use `PascalCase`, functions use `snake_case`, constants use `SCREAMING_SNAKE`? Per `CLAUDE.md` naming table.
 
 ### Dependency Direction
 
-**dependency-direction**: Does data flow in the correct direction? Models should not import agents. Parsers should not import generators. Agents should not import each other directly (they communicate via the orchestrator). A violation here creates circular dependencies or tight coupling.
+**dependency-direction**: Does data flow in the correct direction? Epic packages (`ingress/`, `budget/`, `trimmer/`, `security/`) may import from `pipeline/`. `pipeline/` must NOT import from any epic package (it is the lowest-level foundation — ADR-0001). Epic packages must not import from each other unless a shared utility in `utils/` is warranted. A violation here creates circular dependencies or tight coupling.
 
 **no-langchain**: Does the diff introduce any LangChain imports or abstractions? Any `from langchain` is an immediate FINDING — ADR-0002 prohibits this.
 
-**async-correctness**: Are new agent methods `async def`? Does async code `await` coroutines rather than calling them synchronously? Does it use `asyncio.gather()` for concurrent operations where appropriate? Per ADR-0003.
+**async-correctness**: Are new middleware callables `async def`? Does async code `await` coroutines rather than calling them synchronously? Synchronous tools wrapped via `run_in_executor` are correct — verify timeout enforcement via `asyncio.wait_for`. Per ADR-0002.
 
 ### Abstraction Quality
 
@@ -59,7 +59,7 @@ Work through every applicable item. For each: PASS | FINDING | SKIP (with reason
 
 **interface-contracts**: Do new public methods have type annotations and docstrings that accurately describe the contract? `-> Any` return types are a finding unless genuinely unavoidable.
 
-**model-integrity**: Do Pydantic models use field validators appropriately? Are optional fields typed `X | None = None`? Are there any `model_config = ConfigDict(arbitrary_types_allowed=True)` usages that bypass Pydantic validation without justification?
+**model-integrity**: SKIP for most ARG changes (no Pydantic models in this codebase — ARG uses stdlib dataclasses). If `dataclasses.dataclass` is used, verify: optional fields use `field(default=...)`, immutability guards are preserved, `__setattr__` overrides are intentional.
 
 ### ADR Compliance
 

@@ -13,8 +13,8 @@ This document tracks overall project progress across all phases. Detailed task s
 | **0** | [Foundation](docs/backlog/phase-0.md) | Complete | 4/4 | Dev environment, tooling, CI verification |
 | **1** | [Core Pipeline & AgentContext](docs/backlog/phase-1.md) | Complete | 3/3 | AgentContext state machine, middleware pipeline, telemetry |
 | **2** | [Ingress Hygiene — The Shield](docs/backlog/phase-2.md) | Complete | 2/2 | Byte-size validators, single-pass parser |
-| **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | In Progress | 2/3 | Token/call counters, async tool wrapper, ExecutionState transitions |
-| **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Not Started | 0/3 | ParsedPayload type fix, format-aware truncators, dynamic budget calculator |
+| **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | Complete | 3/3 | Token/call counters, async tool wrapper, ExecutionState transitions |
+| **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | In Progress | 0/3 | ParsedPayload type fix, format-aware truncators, dynamic budget calculator |
 | **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Not Started | 0/4 | SecurityValidator protocol, SQL AST validator, integration tests, public API |
 | **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Not Started | 0/3 | Working example, thread pool config, depth heuristic improvement |
 
