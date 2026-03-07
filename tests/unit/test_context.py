@@ -125,8 +125,7 @@ class TestAgentContextMutability:
         The __setattr__ guard protects against accidental reassignment in normal
         Python code.  Callers who invoke object.__setattr__() directly are
         operating outside the public API contract.  This is a deliberate design
-        trade-off: we trust our own middleware code.  See TODO(P2-T01) in
-        context.py for a potential __slots__-based fix.
+        trade-off: we trust our own middleware code.
         """
         ctx = AgentContext(raw_payload=b"original")
         object.__setattr__(ctx, "raw_payload", b"bypassed")
