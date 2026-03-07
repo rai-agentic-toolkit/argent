@@ -7,9 +7,9 @@ Current AI agent architectures suffer from systemic fragility. Agents are permit
 ARG is a deterministic, middleware-driven execution wrapper for AI agents. It acts as a single, highly optimized checkpoint that guarantees payload hygiene, enforces strict execution budgets, and physically compresses output payloads to mathematically guarantee context-window compliance.
 
 ## 3. Non-Functional Requirements (NFRs)
-- **Zero-Copy / Single-Pass Parsing:** Payloads must be parsed structurally (e.g., into a JSON AST) exactly once per cycle to conserve compute. This is a hard requirement for deployments running on resource-constrained hardware, such as multi-node home server racks used for local AI experimentation, where memory allocation overhead must be aggressively minimized.
+- **Single-Pass Parsing:** Payloads must be parsed structurally (e.g., into a JSON AST) exactly once per pipeline execution. The result is attached to `AgentContext.parsed_ast` and reused by all downstream middlewares — no re-parsing at later stages. This eliminates redundant CPU and allocation cost, which matters on resource-constrained hardware. Note: this is a *single-pass* guarantee, not a zero-copy one — Python's `json.loads()` and `defusedxml` necessarily allocate object graphs from the raw bytes. The guarantee is that this allocation happens at most once per request.
 - **Graceful Degradation:** If structural parsing fails (e.g., malformed JSON), the system must silently fall back to plaintext slicing. It must never crash the host event loop.
-- **Zero-Dependency Core:** The core pipeline must rely only on the Python standard library. Heavy parsers (e.g., `sqlglot`, `tiktoken`) must be strictly opt-in extras.
+- **Zero-Dependency Core:** The `pipeline/` subpackage (Epic 1) must rely only on the Python standard library. Epic-scoped subpackages (`ingress/`, `budget/`, `trimmer/`, `security/`) may carry hard runtime dependencies **only when security or correctness demands it** and **only when justified by an ADR**. `defusedxml` in `ingress/` is the canonical example (see ADR-0003). Heavy optional parsers (e.g., `sqlglot`, `tiktoken`, `pyyaml`) must remain strictly opt-in extras.
 
 ## 4. Overarching Business Rules (The "Must-Haves")
 These are the inviolable laws of the framework.
