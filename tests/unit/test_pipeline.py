@@ -144,8 +144,7 @@ class TestPipelineExecution:
         pipeline = Pipeline(ingress=[], pre_execution=[], execution=[], egress=[])
         result = await pipeline.run(ctx)
         assert result is ctx
-        assert ctx.token_count == 0
-        assert ctx.call_count == 0
+        assert ctx.execution_state is ExecutionState.COMPLETE
 
     async def test_execution_state_mutation_visible_across_stages(self) -> None:
         """State set in ingress is visible in egress."""

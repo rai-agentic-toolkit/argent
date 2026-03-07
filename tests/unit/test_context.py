@@ -59,16 +59,6 @@ class TestAgentContextInstantiation:
         ctx = AgentContext(raw_payload=b"data")
         assert ctx.parsed_ast is None
 
-    def test_token_count_defaults_to_zero(self) -> None:
-        """token_count starts at 0."""
-        ctx = AgentContext(raw_payload=b"data")
-        assert ctx.token_count == 0
-
-    def test_call_count_defaults_to_zero(self) -> None:
-        """call_count starts at 0."""
-        ctx = AgentContext(raw_payload=b"data")
-        assert ctx.call_count == 0
-
     def test_execution_state_defaults_to_pending(self) -> None:
         """execution_state defaults to PENDING."""
         ctx = AgentContext(raw_payload=b"data")
@@ -100,18 +90,6 @@ class TestAgentContextMutability:
         ctx = AgentContext(raw_payload=b"data")
         ctx.execution_state = ExecutionState.RUNNING
         assert ctx.execution_state is ExecutionState.RUNNING
-
-    def test_token_count_can_be_incremented(self) -> None:
-        """token_count can be incremented by budget middleware."""
-        ctx = AgentContext(raw_payload=b"data")
-        ctx.token_count += 42
-        assert ctx.token_count == 42
-
-    def test_call_count_can_be_incremented(self) -> None:
-        """call_count can be incremented by budget middleware."""
-        ctx = AgentContext(raw_payload=b"data")
-        ctx.call_count += 1
-        assert ctx.call_count == 1
 
     def test_raw_payload_is_immutable_after_construction(self) -> None:
         """raw_payload cannot be reassigned via normal attribute assignment."""

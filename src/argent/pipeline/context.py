@@ -37,18 +37,11 @@ class AgentContext:
             outside the public API contract (known limitation).
         parsed_ast: Structured representation produced by parser middleware.
             None until populated by ingress middleware.
-        token_count: Running total of tokens consumed.  Orphaned field —
-            scheduled for removal in P4-T02 (budget state lives in
-            ``RequestBudget``; see ADR-0004).
-        call_count: Running total of tool calls issued.  Orphaned field —
-            scheduled for removal in P4-T02 (see ADR-0004).
         execution_state: Current lifecycle state of this execution.
     """
 
     raw_payload: bytes
     parsed_ast: ParsedPayload = field(default=None)
-    token_count: int = field(default=0)
-    call_count: int = field(default=0)
     execution_state: ExecutionState = field(default=ExecutionState.PENDING)
 
     def __setattr__(self, name: str, value: object) -> None:
