@@ -28,6 +28,22 @@ SKIP — no structural changes in `src/`. The README accurately reflects the pac
 
 ---
 
+## [2026-03-07] P3-T03 — Wire ExecutionState Transitions in Pipeline.run()
+
+### QA
+Both prior FINDINGs are cleanly resolved: the assertion strengthening is meaningful and would catch real regressions, and the docstring now serves as an accurate contract that another engineer could implement against without reading the source. The state-machine coverage in TestExecutionStateTransitions is notably thorough — five tests for five distinct state outcomes in a four-state enum is good discipline. Future tests that run validators through pipeline.run() should assert COMPLETE (not PENDING) — the stale-assertion correction in test_ingress_validators.py is a useful precedent to remember.
+
+### UI/UX
+SKIP — no template, route, or form changes. This diff adds two enum assignment lines to Pipeline.run() and updates a docstring. No UI surface area exists in this project yet.
+
+### DevOps
+This task completes the ExecutionState wiring, giving the pipeline a clear, observable state machine contract — PENDING → RUNNING → COMPLETE (or RUNNING/HALTED on failure). From an operational standpoint, this is meaningful: state is now inspectable by external observers without requiring instrumentation inside the pipeline itself. The HALTED-preservation behavior is correctly not protected by a try/finally — that is a deliberate design choice, documented in the docstring, and the test suite confirms it. One pattern worth watching: as Epics 2-5 add middleware that may set HALTED directly, the documented dual-authority model (Pipeline sets RUNNING/COMPLETE, middleware sets HALTED) will need to remain consistent across all future middleware authors.
+
+### Architecture
+This diff resolves a meaningful dead-state problem: RUNNING and COMPLETE were defined in the enum but never assigned by any production code path, making the state machine decorative rather than functional. The fix is exactly the right size — two lines at the precise boundaries of the execution loop. The docstring-driven contract approach is a reasonable choice for a library of this scale, provided the docstring is kept synchronized with the implementation on every future change to run(). One ADR observation worth a future amendment: adding a note to ADR-0002 about the HALTED-on-exception convention would prevent drift as middleware authors in Phases 4-5 encounter this contract for the first time.
+
+---
+
 ## [2026-03-07] P3-T01/T02 — RequestBudget & ToolExecutor (The Leash)
 
 ### QA
