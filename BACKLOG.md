@@ -13,11 +13,12 @@ This document tracks overall project progress across all phases. Detailed task s
 | **0** | [Foundation](docs/backlog/phase-0.md) | Complete | 4/4 | Dev environment, tooling, CI verification |
 | **1** | [Core Pipeline & AgentContext](docs/backlog/phase-1.md) | Complete | 3/3 | AgentContext state machine, middleware pipeline, telemetry |
 | **2** | [Ingress Hygiene — The Shield](docs/backlog/phase-2.md) | Complete | 2/2 | Byte-size validators, single-pass parser |
-| **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | Not Started | 0/2 | Token/call counters, tool execution wrapper |
-| **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Not Started | 0/2 | Format-aware truncators, dynamic budget calculator |
-| **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Not Started | 0/2 | SecurityValidator protocol, SQL AST validator |
+| **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | In Progress | 2/3 | Token/call counters, async tool wrapper, ExecutionState transitions |
+| **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Not Started | 0/3 | ParsedPayload type fix, format-aware truncators, dynamic budget calculator |
+| **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Not Started | 0/4 | SecurityValidator protocol, SQL AST validator, integration tests, public API |
+| **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Not Started | 0/3 | Working example, thread pool config, depth heuristic improvement |
 
-**Total Tasks**: 15
+**Total Tasks**: 22
 
 ---
 
@@ -30,14 +31,15 @@ flowchart LR
     P1 --> P3[Phase 3: Leash]
     P2 --> P4[Phase 4: Trimmer]
     P3 --> P4
-    P4 --> P5[Phase 5: Guard]
+    P4 --> P5[Phase 5: Guard + MVP]
+    P5 --> P6[Phase 6: Polish]
+
+    P3T03[P3-T03: ExecutionState]:::parallel
+    P3 -.-> P3T03
+    P3T03 -.-> P4
 ```
 
-- **Phase 0** must complete before any other phase
-- **Phase 1** must complete before Phases 2 and 3
-- **Phases 2 and 3** can run in parallel after Phase 1 completes
-- **Phase 4** requires Phases 2 and 3 to be complete
-- **Phase 5** requires Phase 4 to be complete (Guard depends on the full pipeline)
+*Note: P3-T03 (ExecutionState transitions) can run in parallel with Phase 4 — it only touches `pipeline/` and has no Trimmer dependency.*
 
 ---
 
@@ -54,6 +56,17 @@ All phases must never violate these inviolable laws:
 
 ---
 
+## Architecture Decisions (ADRs)
+
+| ADR | Title | Phase |
+|-----|-------|-------|
+| [ADR-0001](docs/adr/ADR-0001-package-topology.md) | Package Topology | P0 |
+| [ADR-0002](docs/adr/ADR-0002-middleware-contract.md) | Async Middleware Contract | P1 |
+| [ADR-0003](docs/adr/ADR-0003-xml-security-dep.md) | XML Security Dependency (defusedxml) | P2 |
+| [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget/Context Coupling & Async Executor | P3 |
+
+---
+
 ## Quick Links
 
 - [Phase 0: Foundation](docs/backlog/phase-0.md)
@@ -62,6 +75,7 @@ All phases must never violate these inviolable laws:
 - [Phase 3: Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md)
 - [Phase 4: Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md)
 - [Phase 5: Pluggable Security Policies — The Guard](docs/backlog/phase-5.md)
+- [Phase 6: Post-MVP Polish](docs/backlog/phase-6.md)
 
 ---
 
@@ -80,9 +94,10 @@ All phases must never violate these inviolable laws:
 
 1. **Pick a task** from the current phase
 2. **Read the full spec** in the phase file
-3. **Create a branch**: `feat/P<phase>-T<task>-<description>`
-4. **Follow TDD**: RED → GREEN → REFACTOR → REVIEW
-5. **Update status** when complete
+3. **Check the Open Advisory Items** table in `docs/RETRO_LOG.md` for any rows targeting this task
+4. **Create a branch**: `feat/P<phase>-T<task>-<description>`
+5. **Follow TDD**: RED → GREEN → REFACTOR → REVIEW
+6. **Update status** when complete
 
 ---
 
@@ -91,3 +106,4 @@ All phases must never violate these inviolable laws:
 | Date | Change |
 |------|--------|
 | 2026-03-04 | Initial backlog created from REQUIREMENTS.md |
+| 2026-03-07 | P3 marked In Progress (P3-T01/T02 complete, P3-T03 added); Phase 4 updated with P4-T00 and revised P4-T02 (Option A: calculator takes RequestBudget directly); Phase 5 updated with P5-T03 (integration tests) and P5-T04 (public API); Phase 6 added (post-MVP polish); REQUIREMENTS.md NFRs corrected |
