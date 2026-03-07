@@ -36,7 +36,7 @@ class ContextBudgetCalculator:
         context_window_tokens: int,
         chars_per_token: float = 4.0,
     ) -> None:
-        self._context_window_tokens = context_window_tokens
+        self._context_window_tokens = context_window_tokens  # TODO(P6-T02): tiktoken integration
         self._chars_per_token = chars_per_token
 
     def compute(self, budget: RequestBudget) -> int:
