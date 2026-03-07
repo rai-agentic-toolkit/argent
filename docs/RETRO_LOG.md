@@ -8,7 +8,25 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| ADV-002 | `.claude/agents/architecture-reviewer.md` scope gate references legacy resume-builder directories (`models/`, `agents/`, `parsers/`, `generators/`, `api/`) instead of the ARG topology (`pipeline/`, `ingress/`, `budget/`, `trimmer/`, `security/`). Update the agent definition when next amended. | Next agent-definition amendment | Architecture review, docs/readme-overhaul |
+| ADV-003 | `pragma: no cover` comment on `json_trimmer.py:121` is misleading — line IS reachable via the `break` path (loop exits, falls through to `return json.dumps(remaining)`). Comment says "break always fires before exhaustion" but that is the reason the line exists. Fix: either remove the pragma (line is covered) or correct the comment. | P5-T01 or any trimmer change | QA (P4 round 2) |
+| ADV-004 | Trimmer implementations produce no observability signal when truncation occurs. Callers cannot detect output was cut without inspecting the raw string. Future: emit a structured telemetry event (truncation type, chars_dropped) from egress trimming middleware. | P5 or telemetry pass | DevOps (P4 round 2) |
+| ADV-005 | `_MIN_CHARS = 256` in `calculator.py` lacks inline rationale (e.g. minimum legible error message length). Add a brief comment before it becomes institutional debt. | P5-T01 or any calculator change | Architecture (P4 round 2) |
+
+---
+
+## [2026-03-07] P4-T00/T01/T02 — The Trimmer (Semantic Context Shaping)
+
+### QA
+Phase 4 continues the pattern of strong test hygiene established in earlier phases — edge cases (empty inputs, zero-budget floors, extreme budget forcing tombstones) are covered proactively without being prompted by failures. 178 tests at 99.27% coverage. Three advisory observations: (1) `pragma: no cover` on `json_trimmer.py:121` has a misleading comment — the line IS the post-break return path, not unreachable code; (2) `isinstance(x, Trimmer)` Protocol check only tested for `PythonTracebackTrimmer` — other three trimmer classes satisfy the Protocol structurally but are not explicitly runtime-tested; (3) `MarkdownTableTrimmer` normalises `\r\n` → `\n` on truncation path only, leaving idempotent path with original endings — latent inconsistency, not a bug. For Phase 5: establish a standing practice that any `pragma: no cover` annotation includes a correct mechanical justification.
+
+### UI/UX
+SKIP — pure backend library. No templates, routes, or interactive elements. Phase 4 is entirely string-transform middleware with no UI surface area.
+
+### DevOps
+Phase 4 is operationally clean: pure-Python string processing, no external I/O, no logging surface that could leak payload content, defensive early-return on all malformed input paths. `gitleaks` clean, `bandit` 0 issues, B405 nosec annotation correct. No new runtime or dev dependencies. Advisory: trimmer implementations produce no observability signal when truncation occurs; Phase 5 / future telemetry pass should emit a structured event (truncation type, chars_dropped) so operators can detect systemic budget pressure. The TYPE_CHECKING guard on the cross-epic import (ADR-0004 Decision 4) is a deliberate pattern; the cycle-audit check in ADR-0004 should be codified as a CI step as the import graph grows.
+
+### Architecture
+Phase 4 establishes a clean two-layer pattern in `trimmer/`: Protocol for composability + concrete strategy classes for format-specific logic. The TYPE_CHECKING guard for cross-epic annotation imports threads the needle between accurate type signatures and the hard dependency-direction constraint from ADR-0001; its documentation in ADR-0004 Decision 4 is exactly the right institutional response. All 12 architecture checklist items pass. One advisory: `_MIN_CHARS = 256` lacks inline rationale — a brief comment (e.g. "minimum legible error message length") would close the gap before it becomes institutional debt. Phase 5 (`security/`) will need the same TYPE_CHECKING pattern if it references `RequestBudget` or `ParsedPayload` — the pattern is now established and auditable.
 
 ---
 

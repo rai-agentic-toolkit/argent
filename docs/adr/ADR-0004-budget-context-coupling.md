@@ -93,6 +93,42 @@ rather than reading `remaining_calls` / `remaining_tokens` directly.
 
 ---
 
+### Decision 4 — Cross-epic imports permitted with TYPE_CHECKING guard (added P4-T02)
+
+Higher-numbered Epic packages may import public types from lower-numbered Epic
+packages when the import is **annotation-only** (e.g. a function signature or
+`TypeAlias`).  Such imports **must** be guarded with `if TYPE_CHECKING:` so
+that no runtime circular dependency is introduced.
+
+**Rationale**
+
+- `trimmer/calculator.py` (Epic 4) needs `RequestBudget` (Epic 3) as the type
+  of the `budget` parameter in `compute()`.  This is a natural layering: higher
+  epics orchestrate lower ones.
+- Guarding the import under `TYPE_CHECKING` ensures no runtime import cycle;
+  the annotation is evaluated as a string at runtime (via `from __future__ import
+  annotations`) and never resolves the symbol.
+- Lateral cross-epic imports (e.g. `trimmer/` ↔ `ingress/`) remain forbidden —
+  only downward (higher-numbered → lower-numbered) references are permitted.
+
+**Required pattern**
+
+```python
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argent.<lower_epic>.<module> import SomePublicType
+```
+
+**Cycle audit**
+
+Before adding any new cross-epic import, the author must confirm no runtime
+import cycle exists by running `poetry run python -c "import argent"` and
+checking that no `ImportError` or `CircularImportError` is raised.
+
+---
+
 ## Consequences
 
 - `AgentContext` has no knowledge of `RequestBudget`.  Code that previously
@@ -103,3 +139,6 @@ rather than reading `remaining_calls` / `remaining_tokens` directly.
   pipeline's async-first design.
 - `RequestBudget.check_precall()` is now part of the public API surface and
   is covered by unit tests.
+- Cross-epic annotation-only imports are permitted downward (higher → lower
+  epic number) with a `TYPE_CHECKING` guard.  Lateral or upward cross-epic
+  imports remain forbidden.
