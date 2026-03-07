@@ -10,7 +10,6 @@ import pytest
 
 from argent.budget.budget import RequestBudget
 from argent.budget.exceptions import BudgetExhaustedError
-from argent.pipeline.context import AgentContext
 
 
 class TestRequestBudgetConstruction:
@@ -20,6 +19,8 @@ class TestRequestBudgetConstruction:
         """RequestBudget is created with max_calls and max_tokens."""
         budget = RequestBudget(max_calls=10, max_tokens=1000)
         assert isinstance(budget, RequestBudget)
+        assert budget.max_calls == 10
+        assert budget.max_tokens == 1000
 
     def test_remaining_calls_starts_at_max(self) -> None:
         """remaining_calls equals max_calls before any calls are recorded."""
@@ -167,22 +168,66 @@ class TestExhaustionCallbacks:
         assert fired == []
 
 
-class TestAgentContextBudgetField:
-    """Tests for the budget field added to AgentContext."""
+class TestCheckPrecall:
+    """Tests for the check_precall() pre-execution budget guard."""
 
-    def test_agent_context_has_budget_field(self) -> None:
-        """AgentContext exposes a budget attribute."""
-        ctx = AgentContext(raw_payload=b"data")
-        assert hasattr(ctx, "budget")
+    def test_check_precall_passes_when_budget_available(self) -> None:
+        """check_precall does not raise when calls and tokens remain."""
+        budget = RequestBudget(max_calls=5, max_tokens=500)
+        budget.check_precall(token_cost=100)  # should not raise
 
-    def test_budget_defaults_to_none(self) -> None:
-        """AgentContext.budget defaults to None (budget is optional)."""
-        ctx = AgentContext(raw_payload=b"data")
-        assert ctx.budget is None
+    def test_check_precall_raises_when_no_calls_remain(self) -> None:
+        """check_precall raises BudgetExhaustedError when remaining_calls == 0."""
+        budget = RequestBudget(max_calls=1, max_tokens=1000)
+        budget.record_call(tokens_used=0)  # use the 1 allowed call
+        with pytest.raises(BudgetExhaustedError) as exc_info:
+            budget.check_precall(token_cost=0)
+        assert exc_info.value.limit_kind == "calls"
 
-    def test_budget_can_be_set(self) -> None:
-        """AgentContext.budget can be assigned a RequestBudget instance."""
-        ctx = AgentContext(raw_payload=b"data")
-        budget = RequestBudget(max_calls=10, max_tokens=1000)
-        ctx.budget = budget
-        assert ctx.budget is budget
+    def test_check_precall_raises_when_token_cost_exceeds_remaining(self) -> None:
+        """check_precall raises BudgetExhaustedError when token_cost > remaining_tokens."""
+        budget = RequestBudget(max_calls=10, max_tokens=100)
+        with pytest.raises(BudgetExhaustedError) as exc_info:
+            budget.check_precall(token_cost=101)
+        assert exc_info.value.limit_kind == "tokens"
+
+    def test_check_precall_does_not_modify_counters(self) -> None:
+        """check_precall is read-only — counters are unchanged whether it raises or not."""
+        budget = RequestBudget(max_calls=5, max_tokens=500)
+        budget.check_precall(token_cost=100)
+        assert budget.remaining_calls == 5
+        assert budget.remaining_tokens == 500
+
+    def test_check_precall_at_exact_token_limit_does_not_raise(self) -> None:
+        """check_precall allows token_cost == remaining_tokens (at-limit is permitted)."""
+        budget = RequestBudget(max_calls=5, max_tokens=100)
+        budget.check_precall(token_cost=100)  # exactly at limit — must not raise
+
+    def test_check_precall_zero_max_calls_always_raises(self) -> None:
+        """check_precall raises immediately when max_calls=0 (no calls ever allowed)."""
+        budget = RequestBudget(max_calls=0, max_tokens=1000)
+        with pytest.raises(BudgetExhaustedError) as exc_info:
+            budget.check_precall(token_cost=0)
+        assert exc_info.value.limit_kind == "calls"
+
+
+class TestEdgeCases:
+    """Edge case behaviour documented for unusual inputs."""
+
+    def test_record_call_with_zero_max_raises_immediately(self) -> None:
+        """RequestBudget(max_calls=0) raises BudgetExhaustedError on first record_call."""
+        budget = RequestBudget(max_calls=0, max_tokens=0)
+        with pytest.raises(BudgetExhaustedError) as exc_info:
+            budget.record_call(tokens_used=0)
+        assert exc_info.value.limit_kind == "calls"
+
+    def test_record_call_negative_tokens_does_not_raise(self) -> None:
+        """record_call with negative tokens_used is accepted (no validation on sign).
+
+        This documents current behaviour — passing a negative value decrements
+        _token_count below zero, effectively 'earning back' tokens.  Callers
+        are responsible for passing non-negative values.
+        """
+        budget = RequestBudget(max_calls=10, max_tokens=100)
+        budget.record_call(tokens_used=-50)  # should not raise
+        assert budget.remaining_tokens == 150  # tokens increased

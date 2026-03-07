@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, TypeAlias
-
-if TYPE_CHECKING:
-    from argent.budget.budget import RequestBudget
+from typing import Any, TypeAlias
 
 
 class ExecutionState(enum.Enum):
@@ -56,7 +53,6 @@ class AgentContext:
     token_count: int = field(default=0)
     call_count: int = field(default=0)
     execution_state: ExecutionState = field(default=ExecutionState.PENDING)
-    budget: RequestBudget | None = field(default=None)
 
     def __setattr__(self, name: str, value: object) -> None:
         """Block accidental reassignment of immutable fields after construction."""

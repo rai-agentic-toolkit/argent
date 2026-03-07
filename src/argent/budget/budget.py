@@ -99,6 +99,38 @@ class RequestBudget:
                 limit=self.max_tokens,
             )
 
+    def check_precall(self, token_cost: int) -> None:
+        """Raise BudgetExhaustedError if the next call would exceed either limit.
+
+        Evaluates both counters *before* incrementing them — does **not**
+        modify any counter.  Call :meth:`record_call` after the tool returns
+        successfully to commit the charge.
+
+        The call limit is checked first; if both would be violated the
+        call-count error takes priority (mirrors :meth:`record_call` ordering).
+
+        Args:
+            token_cost: Token units that would be charged post-call.
+
+        Raises:
+            BudgetExhaustedError: If ``remaining_calls <= 0`` (one more call
+                would push the call counter past ``max_calls``) or if
+                ``token_cost > remaining_tokens`` (the projected token total
+                would exceed ``max_tokens``).
+        """
+        if self.remaining_calls <= 0:
+            raise BudgetExhaustedError(
+                limit_kind="calls",
+                current=self._call_count + 1,
+                limit=self.max_calls,
+            )
+        if token_cost > self.remaining_tokens:
+            raise BudgetExhaustedError(
+                limit_kind="tokens",
+                current=self._token_count + token_cost,
+                limit=self.max_tokens,
+            )
+
     def _fire_callbacks(self) -> None:
         """Invoke all registered exhaustion callbacks in registration order."""
         for cb in self._callbacks:
