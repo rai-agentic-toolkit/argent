@@ -172,4 +172,4 @@ class TestValidatorsAsMiddleware:
         )
         result = await pipeline.run(ctx)
         assert result is ctx
-        assert ctx.execution_state is ExecutionState.PENDING
+        assert ctx.execution_state is ExecutionState.COMPLETE

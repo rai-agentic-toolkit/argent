@@ -12,6 +12,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from argent.pipeline.context import ExecutionState
+
 if TYPE_CHECKING:
     from argent.pipeline.context import AgentContext
     from argent.pipeline.telemetry import Telemetry
@@ -56,6 +58,7 @@ class Pipeline:
                 Telemetry ``stage_end`` is still emitted before the exception
                 propagates (try/finally guarantee).
         """
+        context.execution_state = ExecutionState.RUNNING
         stages = (self.ingress, self.pre_execution, self.execution, self.egress)
         for name, middlewares in zip(_STAGE_NAMES, stages, strict=True):
             start_ms: float | None = None
@@ -67,4 +70,5 @@ class Pipeline:
             finally:
                 if self.telemetry is not None and start_ms is not None:
                     self.telemetry.emit_end(name, context, start_ms)
+        context.execution_state = ExecutionState.COMPLETE
         return context
