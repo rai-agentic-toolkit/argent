@@ -47,6 +47,16 @@ class Pipeline:
     async def run(self, context: AgentContext) -> AgentContext:
         """Execute all stages in order against *context*.
 
+        State machine contract:
+
+        - ``context.execution_state`` is set to :attr:`ExecutionState.RUNNING`
+          before the first stage begins.
+        - ``context.execution_state`` is set to :attr:`ExecutionState.COMPLETE`
+          after all stages finish without raising.
+        - If any middleware raises, the exception propagates unchanged and
+          ``COMPLETE`` is never set.  The state remains ``RUNNING`` unless the
+          middleware itself explicitly set it to ``HALTED`` before raising.
+
         Args:
             context: The shared agent execution context.
 

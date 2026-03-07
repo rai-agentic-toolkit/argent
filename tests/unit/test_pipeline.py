@@ -207,7 +207,7 @@ class TestExecutionStateTransitions:
         assert ctx.execution_state == ExecutionState.HALTED
 
     async def test_execution_state_not_complete_when_middleware_raises(self) -> None:
-        """If any middleware raises, execution_state is never set to COMPLETE."""
+        """If a middleware raises without setting HALTED, state remains RUNNING."""
         ctx = AgentContext(raw_payload=b"data")
 
         async def exploding(context: AgentContext) -> None:
@@ -216,4 +216,4 @@ class TestExecutionStateTransitions:
         pipeline = Pipeline(execution=[exploding])
         with pytest.raises(ValueError):
             await pipeline.run(ctx)
-        assert ctx.execution_state != ExecutionState.COMPLETE
+        assert ctx.execution_state == ExecutionState.RUNNING
