@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from argent.budget.budget import RequestBudget
 
+# 256 chars is the minimum legible error message / JSON fragment an LLM can act on;
+# below this threshold the trimmer output would be too truncated to be useful.
 _MIN_CHARS: int = 256
 
 

@@ -7,6 +7,7 @@ before src/argent/security/sql_validator.py exists.
 import sys
 
 import pytest
+import sqlglot
 
 from argent.pipeline.context import AgentContext
 from argent.security.exceptions import SecurityViolationError
@@ -67,6 +68,25 @@ class TestSqlAstValidatorPassingCases:
         ctx = AgentContext(raw_payload=b"data")
         ctx.parsed_ast = ["item1", "item2"]
         SqlAstValidator().validate(ctx)
+
+
+class TestSqlAstValidatorEdgeCases:
+    """Tests for edge-case inputs to SqlAstValidator."""
+
+    def test_passes_empty_string_sql(self) -> None:
+        """Empty string parsed_ast produces no blocking statements."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = ""
+        SqlAstValidator().validate(ctx)  # must not raise
+
+    def test_handles_sqlglot_parse_exception_gracefully(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When sqlglot.parse raises, the validator returns without error."""
+        monkeypatch.setattr(sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("boom")))
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "some sql"
+        SqlAstValidator().validate(ctx)  # must not raise
 
 
 class TestSqlAstValidatorBlockingCases:

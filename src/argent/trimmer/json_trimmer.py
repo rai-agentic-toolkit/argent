@@ -118,4 +118,5 @@ class JsonDictTrimmer:
             if len(candidate) <= self._max_chars:
                 return candidate
 
-        return json.dumps(remaining)  # pragma: no cover — break always fires before exhaustion
+        # Reached when break fires (len(remaining) == 1): return the single remaining key.
+        return json.dumps(remaining)
