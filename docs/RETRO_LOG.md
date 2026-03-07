@@ -8,7 +8,7 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| ADV-002 | `.claude/agents/architecture-reviewer.md` scope gate references legacy resume-builder directories (`models/`, `agents/`, `parsers/`, `generators/`, `api/`) instead of the ARG topology (`pipeline/`, `ingress/`, `budget/`, `trimmer/`, `security/`). Update the agent definition when next amended. | Next agent-definition amendment | Architecture review, docs/readme-overhaul |
+| — | *(no open items)* | — | — |
 
 ---
 
