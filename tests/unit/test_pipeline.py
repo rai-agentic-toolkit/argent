@@ -160,3 +160,60 @@ class TestPipelineExecution:
         pipeline = Pipeline(ingress=[set_running], egress=[read_state])
         await pipeline.run(AgentContext(raw_payload=b"data"))
         assert states_seen == [ExecutionState.RUNNING]
+
+
+class TestExecutionStateTransitions:
+    """Tests for Pipeline-managed ExecutionState lifecycle transitions."""
+
+    async def test_execution_state_is_running_during_middleware(self) -> None:
+        """context.execution_state is RUNNING while any middleware is executing."""
+        states_seen: list[ExecutionState] = []
+
+        async def capture(ctx: AgentContext) -> None:
+            states_seen.append(ctx.execution_state)
+
+        pipeline = Pipeline(
+            ingress=[capture],
+            pre_execution=[capture],
+            execution=[capture],
+            egress=[capture],
+        )
+        await pipeline.run(AgentContext(raw_payload=b"data"))
+        assert all(s == ExecutionState.RUNNING for s in states_seen)
+        assert len(states_seen) == 4
+
+    async def test_execution_state_is_complete_after_successful_run(self) -> None:
+        """context.execution_state is COMPLETE after Pipeline.run() returns cleanly."""
+        ctx = AgentContext(raw_payload=b"data")
+        await Pipeline().run(ctx)
+        assert ctx.execution_state == ExecutionState.COMPLETE
+
+    async def test_execution_state_is_pending_before_run(self) -> None:
+        """context.execution_state starts as PENDING before Pipeline.run() is called."""
+        ctx = AgentContext(raw_payload=b"data")
+        assert ctx.execution_state == ExecutionState.PENDING
+
+    async def test_execution_state_halted_preserved_when_middleware_raises(self) -> None:
+        """HALTED set by a middleware is not overwritten when the exception propagates."""
+        ctx = AgentContext(raw_payload=b"data")
+
+        async def halting(context: AgentContext) -> None:
+            context.execution_state = ExecutionState.HALTED
+            raise RuntimeError("validator rejected payload")
+
+        pipeline = Pipeline(ingress=[halting])
+        with pytest.raises(RuntimeError):
+            await pipeline.run(ctx)
+        assert ctx.execution_state == ExecutionState.HALTED
+
+    async def test_execution_state_not_complete_when_middleware_raises(self) -> None:
+        """If any middleware raises, execution_state is never set to COMPLETE."""
+        ctx = AgentContext(raw_payload=b"data")
+
+        async def exploding(context: AgentContext) -> None:
+            raise ValueError("boom")
+
+        pipeline = Pipeline(execution=[exploding])
+        with pytest.raises(ValueError):
+            await pipeline.run(ctx)
+        assert ctx.execution_state != ExecutionState.COMPLETE
