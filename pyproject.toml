@@ -35,6 +35,11 @@ sql = [
     # Install with: pip install argent[sql]
     "sqlglot>=20.0.0",
 ]
+examples = [
+    # Optional extra: required to run examples/basic_agent.py.
+    # Install with: pip install argent[examples]
+    "anthropic>=0.25.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",

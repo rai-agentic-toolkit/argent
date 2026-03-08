@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
+    import concurrent.futures
     from collections.abc import Callable
 
     from argent.budget.budget import RequestBudget
@@ -49,10 +50,17 @@ class ToolExecutor:
             (timeout and recursion protection still apply).
         timeout_seconds: Maximum time a tool call may take before a
             ``ToolTimeoutError`` is raised.  Defaults to 30 seconds.
+        executor: Optional ``concurrent.futures.Executor`` to use for running
+            tools in a thread.  When ``None`` (default), the process-wide
+            default thread pool is used (``run_in_executor(None, ...)``).
+            Pass a dedicated ``ThreadPoolExecutor`` for concurrent-agent
+            deployments that need thread pool isolation.  The caller owns
+            the executor's lifecycle — ``ToolExecutor`` does not shut it down.
     """
 
     budget: RequestBudget | None = field(default=None)
     timeout_seconds: float = field(default=_DEFAULT_TIMEOUT)
+    executor: concurrent.futures.Executor | None = field(default=None)
 
     async def execute(
         self,
@@ -87,11 +95,13 @@ class ToolExecutor:
         if self.budget is not None:
             self.budget.check_precall(token_cost)
 
-        # Execute tool in a thread so the event loop is never blocked
+        # Execute tool in a thread so the event loop is never blocked.
+        # self.executor=None uses the process-wide default pool (unchanged default
+        # behaviour); a custom Executor gives concurrent deployments thread isolation.
         loop = asyncio.get_running_loop()
         try:
             result: _T = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: tool(*args, **kwargs)),
+                loop.run_in_executor(self.executor, lambda: tool(*args, **kwargs)),
                 timeout=self.timeout_seconds,
             )
         except TimeoutError as err:

@@ -58,10 +58,11 @@ class ByteSizeValidator:
 class DepthLimitValidator:
     """Async middleware that rejects payloads with excessive nesting depth.
 
-    Uses a fast bracket-counting heuristic (O(n) character scan, no parsing):
+    Uses a fast bracket-counting heuristic (O(n) single-pass scan, no parsing):
     the maximum concurrent open-bracket count (``{`` or ``[``) approximates
-    the structural nesting depth.  This intentionally over-estimates depth
-    to err on the side of caution.
+    the structural nesting depth.  String literals (double-quoted content) are
+    skipped so brackets inside values like ``"use {var}"`` or log lines with
+    ``[INFO]`` do not inflate the depth estimate.
 
     Args:
         max_depth: Maximum estimated nesting depth allowed.
@@ -91,25 +92,38 @@ class DepthLimitValidator:
 
     @staticmethod
     def _estimate_depth(payload: bytes) -> int:
-        """Estimate nesting depth via bracket character counting.
+        """Estimate nesting depth via quote-aware bracket character counting.
 
-        Tracks the maximum concurrent open-bracket count as a proxy for
-        structural depth.  Both ``{``/``}`` and ``[``/``]`` are counted
-        together since they both represent nesting in JSON/YAML/etc.
+        Single O(n) pass over raw bytes.  Tracks whether the scan is inside a
+        double-quoted string and skips brackets found there so that values like
+        ``"connect to {host}:{port}"`` or ``"[INFO] started"`` do not inflate
+        the structural depth estimate.  Escaped quotes (``\\"`` in the byte
+        stream) are handled correctly by skipping the byte that follows ``\\``.
 
         Args:
             payload: Raw bytes to scan.
 
         Returns:
-            Maximum estimated depth encountered.
+            Maximum estimated structural depth encountered.
         """
         current = 0
         max_depth = 0
-        for byte in payload:
-            if byte in (ord("{"), ord("[")):
+        in_string = False
+        i = 0
+        while i < len(payload):
+            byte = payload[i]
+            if in_string:
+                if byte == ord("\\"):
+                    i += 2  # skip the escaped character (e.g. \" or \\)
+                    continue
+                if byte == ord('"'):
+                    in_string = False
+            elif byte == ord('"'):
+                in_string = True
+            elif byte in (ord("{"), ord("[")):
                 current += 1
                 max_depth = max(max_depth, current)
-            elif byte in (ord("}"), ord("]")):
-                if current > 0:
-                    current -= 1
+            elif byte in (ord("}"), ord("]")) and current > 0:
+                current -= 1
+            i += 1
         return max_depth

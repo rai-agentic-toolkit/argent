@@ -20,6 +20,10 @@ config.local.json
 /output/*.pdf
 /output/*.docx
 
+# Examples runtime artifacts — not committed
+examples/output/
+examples/*.log
+
 # =============================================================================
 # Python
 # =============================================================================
