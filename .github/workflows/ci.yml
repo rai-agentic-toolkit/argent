@@ -36,13 +36,13 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run Ruff linting
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ examples/
 
       - name: Run Ruff formatting check
-        run: ruff format --check src/ tests/
+        run: ruff format --check src/ tests/ examples/
 
       - name: Run MyPy type checking
-        run: mypy src/
+        run: mypy src/ examples/
 
   # ===========================================================================
   # Security Scanning
@@ -74,7 +74,7 @@ jobs:
           sudo mv gitleaks /usr/local/bin/
 
       - name: Run Bandit security scan
-        run: bandit -c pyproject.toml -r src/
+        run: bandit -c pyproject.toml -r src/ examples/
 
       - name: Run Gitleaks
         run: gitleaks detect --source . --log-opts="origin/main..HEAD" --verbose

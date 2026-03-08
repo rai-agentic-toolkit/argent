@@ -180,6 +180,34 @@ class TestDepthLimitValidatorQuoteAwareness:
         validator = DepthLimitValidator(max_depth=3)
         await validator(ctx)  # must not raise — depth == limit == 3
 
+    def test_backslash_at_end_of_payload_does_not_crash(self) -> None:
+        """Truncated payload ending with backslash inside string exits cleanly.
+
+        When the algorithm encounters ``\\`` (escape), it does ``i += 2``.
+        If ``\\`` is the last byte, ``i`` jumps past ``len(payload)`` and the
+        while-loop exits — no IndexError, no crash.
+        """
+        # Malformed: string never closed, last byte is a backslash.
+        payload = b'{"key": "value\\'
+        depth = DepthLimitValidator._estimate_depth(payload)
+        # Only the outer { is counted (depth 1); backslash skip exits cleanly.
+        assert depth == 1
+
+    def test_unmatched_quote_under_counts_but_does_not_crash(self) -> None:
+        """Malformed payload with an unmatched quote under-counts depth without crashing.
+
+        An unmatched ``"`` that opens string-mode but is never closed causes all
+        subsequent structural brackets to be treated as inside a string and skipped.
+        This is an accepted trade-off: the heuristic errs permissively (lower depth
+        estimate) on malformed input rather than crashing.  Well-formed JSON always
+        has balanced quotes, so this edge only arises under corruption or attack.
+        """
+        # "bad has no closing quote; the algorithm treats the payload remainder
+        # as a string, so the inner { brackets are skipped.  Depth stays at 1.
+        payload = b'{"a": 1, "bad: {"b": {"c": 1}}}'
+        depth = DepthLimitValidator._estimate_depth(payload)
+        assert depth == 1  # accepted under-count — algorithm does not crash
+
 
 class TestValidatorsAsMiddleware:
     """Tests confirming validators plug into the async Pipeline."""

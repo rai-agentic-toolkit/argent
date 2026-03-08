@@ -28,6 +28,7 @@ from argent import (
     ByteSizeValidator,
     DepthLimitValidator,
     JsonDictTrimmer,
+    NestingDepthError,
     PayloadTooLargeError,
     Pipeline,
     RequestBudget,
@@ -71,14 +72,26 @@ def _build_pipeline() -> Pipeline:
 # ── Stage 2: Claude API call ───────────────────────────────────────────────────
 
 
-def _invoke_claude() -> bytes:
-    """Call the Claude API and return the response text as raw bytes."""
-    client = anthropic.Anthropic(api_key=_API_KEY)
-    response = client.messages.create(
+async def _invoke_claude() -> bytes:
+    """Call the Claude API asynchronously and return the response as raw bytes.
+
+    Uses AsyncAnthropic so the event loop is never blocked during the network
+    round-trip.  In production code, instantiate a module-level client for
+    connection reuse rather than creating a new one per call.
+    """
+    client = anthropic.AsyncAnthropic(api_key=_API_KEY)
+    response = await client.messages.create(
         model=_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": _PROMPT}],
     )
+    # Guard the union type: content[0] may be TextBlock, ToolUseBlock, etc.
+    if not response.content or not isinstance(response.content[0], anthropic.types.TextBlock):
+        block_type = type(response.content[0]).__name__ if response.content else "empty"
+        raise RuntimeError(
+            f"Expected TextBlock as first content block, got {block_type}. "
+            "Adjust the prompt or check stop_reason."
+        )
     return response.content[0].text.encode()
 
 
@@ -102,20 +115,26 @@ async def run() -> None:
 
     # 1. Fetch response from Claude — wrap as AgentContext for ingress.
     print(f"[ARG] Calling {_MODEL} …")
-    raw_bytes = _invoke_claude()
+    raw_bytes = await _invoke_claude()
     ctx = AgentContext(raw_payload=raw_bytes)
 
     # 2. Run ingress pipeline: validate + parse.
     pipeline = _build_pipeline()
     try:
         await pipeline.run(ctx)
-    except PayloadTooLargeError as exc:
-        print(f"[ARG] Ingress blocked — payload too large: {exc}", file=sys.stderr)
+    except (PayloadTooLargeError, NestingDepthError) as exc:
+        print(f"[ARG] Ingress blocked: {exc}", file=sys.stderr)
         sys.exit(1)
 
     print(f"[ARG] Ingress passed — parsed_ast type: {type(ctx.parsed_ast).__name__}")
 
     # 3. Execute a tool under budget control.
+    #    For concurrent deployments that run many agents in the same process,
+    #    pass a dedicated thread pool for isolation:
+    #        import concurrent.futures
+    #        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+    #            executor = ToolExecutor(budget=budget, executor=pool)
+    #    The caller owns the pool lifecycle; ToolExecutor does not shut it down.
     budget = RequestBudget(max_calls=5, max_tokens=200)
     executor = ToolExecutor(budget=budget)
 

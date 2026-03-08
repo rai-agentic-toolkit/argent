@@ -127,6 +127,53 @@ Before adding any new cross-epic import, the author must confirm no runtime
 import cycle exists by running `poetry run python -c "import argent"` and
 checking that no `ImportError` or `CircularImportError` is raised.
 
+### Decision 5 — Custom `Executor` injection for thread pool isolation (P6-T02)
+
+`ToolExecutor` accepts an optional `executor: concurrent.futures.Executor | None`
+constructor field (dataclass default `None`).
+
+When `None` (default), `run_in_executor(None, ...)` uses the process-wide
+default pool — identical to the original Decision 2 behaviour.  When a custom
+`Executor` is supplied, `run_in_executor(self.executor, ...)` uses that pool.
+
+**Rationale**
+
+Under concurrent agent load — many agents each blocking a thread for up to
+`timeout_seconds` — the process-wide default pool can be exhausted, causing new
+tool calls to queue rather than execute immediately.  Exposing the executor as an
+injectable field lets concurrent deployments pass a dedicated
+`ThreadPoolExecutor(max_workers=N)` sized to their concurrency budget without
+changing any library internals.
+
+**Lifecycle contract**
+
+The caller owns the `Executor` lifecycle.  `ToolExecutor` does not shut it down.
+The recommended pattern is a `with` block:
+
+```python
+import concurrent.futures
+from argent import ToolExecutor
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+    executor = ToolExecutor(budget=budget, executor=pool)
+    result = await executor.execute(my_tool)
+```
+
+**ProcessPoolExecutor warning**
+
+Tools passed to `run_in_executor` with a `ProcessPoolExecutor` must be
+picklable at call time (including all captured closure variables).  Lambda
+expressions and closures that capture non-picklable objects will raise
+`PicklingError`.  Use `ThreadPoolExecutor` for the vast majority of tool use
+cases; `ProcessPoolExecutor` is only appropriate for CPU-bound, picklable tools.
+
+**Abandoned-thread behaviour**
+
+The abandoned-thread caveat from Decision 2 applies equally to injected
+executors: when `asyncio.wait_for` times out, the underlying thread continues
+running until the tool returns or raises.  The choice of executor does not
+change this behaviour.
+
 ---
 
 ## Consequences
