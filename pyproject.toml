@@ -35,6 +35,12 @@ sql = [
     # Install with: pip install argent[sql]
     "sqlglot>=20.0.0",
 ]
+examples = [
+    # Optional extra: required to run examples/basic_agent.py.
+    # Install with: pip install argent[examples]
+    # Upper-bounded to prevent silent breakage from SDK major-version changes.
+    "anthropic>=0.40.0,<2.0.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -55,6 +61,10 @@ dev = [
     # sqlglot included in dev to run P5-T02 tests against the real library;
     # production consumers use the [sql] optional extra instead.
     "sqlglot>=20.0.0",
+    # anthropic included in dev so CI mypy can resolve types in examples/.
+    # The examples/ scripts cannot be smoke-tested in CI (require a live API key);
+    # only static analysis (ruff, mypy, bandit) is run against them in CI.
+    "anthropic>=0.40.0,<2.0.0",
 ]
 
 [project.urls]
@@ -105,6 +115,8 @@ known-first-party = ["argent"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["ARG", "PLR2004"]
+# Example scripts use commented-out code to illustrate optional usage patterns.
+"examples/**/*" = ["ERA001"]
 
 # =============================================================================
 # MyPy Configuration

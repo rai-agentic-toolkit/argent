@@ -145,6 +145,70 @@ class TestDepthLimitValidator:
         assert ctx.execution_state is ExecutionState.PENDING
 
 
+class TestDepthLimitValidatorQuoteAwareness:
+    """Tests for P6-T03: quote-aware bracket counting in _estimate_depth.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
+    until _estimate_depth is updated to skip brackets inside string literals.
+    """
+
+    def test_brackets_inside_string_value_score_depth_one(self) -> None:
+        """Brackets inside a quoted string don't increment structural depth."""
+        payload = b'{"key": "value with {braces} and [brackets]"}'
+        assert DepthLimitValidator._estimate_depth(payload) == 1
+
+    def test_escaped_quote_does_not_end_string_tracking(self) -> None:
+        """Escaped quote inside a string doesn't prematurely end string mode."""
+        payload = b'{"key": "say \\"hello {world}\\""}'
+        assert DepthLimitValidator._estimate_depth(payload) == 1
+
+    def test_legitimate_nesting_depth_unchanged(self) -> None:
+        """Real structural nesting still computes the correct depth."""
+        payload = b'{"a": {"b": [1, 2]}}'
+        assert DepthLimitValidator._estimate_depth(payload) == 3
+
+    def test_string_with_bracket_and_outer_nesting(self) -> None:
+        """Template string in one key does not pollute depth of real nesting."""
+        payload = b'{"template": "use {var}", "data": {"nested": true}}'
+        # Structural brackets: outer { at depth 1, inner { at depth 2
+        assert DepthLimitValidator._estimate_depth(payload) == 2
+
+    async def test_deeply_nested_with_string_brackets_passes(self) -> None:
+        """Structural depth 3 with string brackets is not incorrectly rejected."""
+        ctx = AgentContext(raw_payload=b'{"a": {"b": {"msg": "no {nesting} here"}}}')
+        # Structural depth is 3 (three real { levels); string {nesting} must not count
+        validator = DepthLimitValidator(max_depth=3)
+        await validator(ctx)  # must not raise — depth == limit == 3
+
+    def test_backslash_at_end_of_payload_does_not_crash(self) -> None:
+        """Truncated payload ending with backslash inside string exits cleanly.
+
+        When the algorithm encounters ``\\`` (escape), it does ``i += 2``.
+        If ``\\`` is the last byte, ``i`` jumps past ``len(payload)`` and the
+        while-loop exits — no IndexError, no crash.
+        """
+        # Malformed: string never closed, last byte is a backslash.
+        payload = b'{"key": "value\\'
+        depth = DepthLimitValidator._estimate_depth(payload)
+        # Only the outer { is counted (depth 1); backslash skip exits cleanly.
+        assert depth == 1
+
+    def test_unmatched_quote_under_counts_but_does_not_crash(self) -> None:
+        """Malformed payload with an unmatched quote under-counts depth without crashing.
+
+        An unmatched ``"`` that opens string-mode but is never closed causes all
+        subsequent structural brackets to be treated as inside a string and skipped.
+        This is an accepted trade-off: the heuristic errs permissively (lower depth
+        estimate) on malformed input rather than crashing.  Well-formed JSON always
+        has balanced quotes, so this edge only arises under corruption or attack.
+        """
+        # "bad has no closing quote; the algorithm treats the payload remainder
+        # as a string, so the inner { brackets are skipped.  Depth stays at 1.
+        payload = b'{"a": 1, "bad: {"b": {"c": 1}}}'
+        depth = DepthLimitValidator._estimate_depth(payload)
+        assert depth == 1  # accepted under-count — algorithm does not crash
+
+
 class TestValidatorsAsMiddleware:
     """Tests confirming validators plug into the async Pipeline."""
 

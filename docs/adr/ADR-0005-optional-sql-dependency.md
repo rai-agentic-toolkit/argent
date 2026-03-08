@@ -136,3 +136,13 @@ belongs naturally at the boundary between ingress and pre_execution.
   `ImportError` (not a silent no-op), (d) add a `[[tool.mypy.overrides]]`
   entry if the package ships no stubs, and (e) document the decision in a
   new ADR following this template.
+
+- **Exemption — `examples` extra (P6-T01)**: The `anthropic` dependency
+  declared in `[project.optional-dependencies].examples` is exempt from
+  guideline clause (b)'s "add to dev for CI coverage" requirement in the sense
+  that `examples/basic_agent.py` **cannot be smoke-tested in CI** — it requires
+  a live `ANTHROPIC_API_KEY`.  However, `anthropic` is added to the `dev` extras
+  so that CI can run static analysis (ruff, mypy, bandit) against `examples/`.
+  This exemption applies to any future `examples/` script that requires a live
+  external credential.  The static analysis gates (linting, type checking,
+  security scanning) remain mandatory for all code under `examples/`.
