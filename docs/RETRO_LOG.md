@@ -14,6 +14,22 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 ---
 
+## [2026-03-08] P6-T01/T02/T03 — Post-MVP Polish
+
+### QA
+Phase 6 covers three distinct concerns — a new example script, a thread pool injection field, and a depth-estimation algorithm rewrite — and the review surfaced meaningful gaps in each. Two findings fixed: (1) `test_backslash_at_end_of_payload_does_not_crash` and `test_unmatched_quote_under_counts_but_does_not_crash` added to `TestDepthLimitValidatorQuoteAwareness`, documenting the clean-exit and accepted-under-count behaviors for adversarial byte sequences; (2) `basic_agent.py` missing `NestingDepthError` catch and unguarded `response.content[0].text` access on a union-typed SDK field — both fixed with a typed `isinstance` guard. Standing rule established: any new byte-parsing algorithm must include tests for truncated inputs and malformed delimiters. Example scripts must guard all SDK union-type accesses with `isinstance` checks — copy-pasted examples propagate patterns into production code.
+
+### UI/UX
+SCOPE: SKIP — no template/route/form changes. DX review instead: two findings fixed in `basic_agent.py`: (1) `NestingDepthError` missing from ingress except clause (would produce raw Python traceback for a new developer); (2) no concrete usage illustration for the new `executor` field despite the docstring advertising it as the recommended path for concurrent deployments — added a commented `ThreadPoolExecutor` with-block in `run()`. Docstring clarified that `AsyncAnthropic` is used over the sync client for async correctness, and that production code should reuse a module-level client. Pattern to carry forward: new optional fields introduced in a library release should have at minimum a commented usage example in `basic_agent.py` or a companion example file.
+
+### DevOps
+Three findings fixed: (1) `_invoke_claude()` used the synchronous `anthropic.Anthropic` client, blocking the event loop during the HTTP round-trip — replaced with `AsyncAnthropic()` + `await`; (2) `anthropic>=0.25.0` had no upper bound; changed to `>=0.40.0,<2.0.0`; (3) `examples/` was entirely outside CI's ruff, mypy, and bandit scopes — all three extended. Also added `ERA001` to `examples/**/*` per-file-ignores (commented-out code is valid pedagogical technique in example scripts). `anthropic` added to `[dev]` extras so static analysis has access to types without requiring a live API key. Operational lesson: every new non-src/ directory containing Python must be added to CI's analysis scope at creation time, not as a follow-up.
+
+### Architecture
+Two findings fixed: (1) ADR-0004 amended with Decision 5 documenting the custom `Executor` injection pattern — lifecycle contract ("caller owns"), `ProcessPoolExecutor` pickling warning, and carry-over of the abandoned-thread caveat from Decision 2; (2) ADR-0005 Consequences updated to document the `examples` extra exemption: live API key scripts are exempt from the CI smoke-test requirement of clause (b), but static analysis (ruff, mypy, bandit) remains mandatory. Pattern established: any PR that changes behaviour described in an existing ADR Decision section must include the ADR amendment in the same branch.
+
+---
+
 ## [2026-03-07] P5-T01/T02/T03/T04 — The Guard (Pluggable Security Policies)
 
 ### QA

@@ -2,7 +2,7 @@
 
 > **Goal**: Harden the delivered MVP with a working end-to-end example, configurable thread pool isolation for concurrent agent deployments, and an improved depth heuristic that eliminates false positives from tool output containing brackets in string values.
 
-**Status**: Not Started
+**Status**: Complete
 **Progress**: 0/3 tasks complete
 
 **Dependencies**: Phase 5 complete (MVP delivered)
@@ -13,9 +13,9 @@
 
 | ID | Task | Status | Dependencies |
 |----|------|--------|--------------|
-| P6-T01 | Working End-to-End Example | Not Started | P5 Complete |
-| P6-T02 | Thread Pool Isolation for `ToolExecutor` | Not Started | P5 Complete |
-| P6-T03 | `DepthLimitValidator` Heuristic Improvement | Not Started | P5 Complete |
+| P6-T01 | Working End-to-End Example | Complete | P5 Complete |
+| P6-T02 | Thread Pool Isolation for `ToolExecutor` | Complete | P5 Complete |
+| P6-T03 | `DepthLimitValidator` Heuristic Improvement | Complete | P5 Complete |
 
 ---
 
@@ -23,7 +23,7 @@
 
 **Description**: Create `examples/basic_agent.py` — a self-contained script that wires ARG around a real Claude API call, demonstrating the full pipeline in action: payload ingress, budget enforcement, tool execution via `ToolExecutor`, and output trimming. This is the primary onboarding artifact for new developers evaluating the framework.
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 
@@ -62,7 +62,7 @@ feat: add basic_agent.py end-to-end example (P6-T01)
 
 **Description**: `ToolExecutor.execute()` currently calls `loop.run_in_executor(None, ...)`, which uses the process-wide default thread pool (`ThreadPoolExecutor(max_workers=min(32, os.cpu_count() + 4))`). Under concurrent agent load — multiple agents each running long-lived tools simultaneously — this shared pool is a bottleneck and can be exhausted. This task exposes a `max_workers` parameter and optionally accepts a custom `Executor`.
 
-**Status**: Not Started
+**Status**: Complete
 
 ### Background
 
@@ -107,7 +107,7 @@ feat: add configurable thread pool isolation to ToolExecutor (P6-T02)
 
 **Description**: The current bracket-counting depth estimator (`DepthLimitValidator._estimate_depth`) counts `{` and `[` in raw bytes without regard for whether they appear inside quoted string values. A JSON payload like `{"message": "connect to {host}:{port}"}` scores depth 3, not 1. This over-estimation can reject valid tool output (code snippets, log lines, template strings) when `max_depth` is tuned tightly.
 
-**Status**: Not Started
+**Status**: Complete
 
 ### Background
 
