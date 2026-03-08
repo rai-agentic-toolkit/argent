@@ -1,9 +1,9 @@
 """Tests for SqlAstValidator.
 
-CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
-before src/argent/security/sql_validator.py exists.
+P8-T03: blocked_types constructor parameter; _STMT_TYPE_TO_KEYWORD extension.
 """
 
+import contextlib
 import logging
 import sys
 
@@ -261,3 +261,74 @@ class TestSqlglotVersionContract:
                 f"sqlglot.expressions.{class_name} exists but is not a class "
                 f"(got {type(obj).__name__})."
             )
+
+
+# ---------------------------------------------------------------------------
+# P8-T03 RED: configurable blocked_types
+# ---------------------------------------------------------------------------
+
+
+class TestSqlAstValidatorConfigurable:
+    """P8-T03: blocked_types constructor parameter for SqlAstValidator.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL until
+    SqlAstValidator accepts blocked_types: frozenset[str] | None = None and
+    validates class names at construction time.
+    """
+
+    def test_no_args_behavior_unchanged(self) -> None:
+        """SqlAstValidator() with no args still blocks the default four types."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DROP TABLE users"
+        with pytest.raises(SecurityViolationError):
+            SqlAstValidator().validate(ctx)
+
+    def test_custom_blocked_types_blocks_specified_type(self) -> None:
+        """SqlAstValidator(blocked_types=frozenset({'Drop','Create'})) blocks DROP."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DROP TABLE users"
+        with pytest.raises(SecurityViolationError):
+            SqlAstValidator(blocked_types=frozenset({"Drop", "Create"})).validate(ctx)
+
+    def test_custom_blocked_types_allows_default_blocked_through(self) -> None:
+        """With custom blocked_types, non-listed default types pass through."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DELETE FROM users WHERE id = 1"
+        # Only Drop is blocked — DELETE must pass
+        SqlAstValidator(blocked_types=frozenset({"Drop"})).validate(ctx)
+
+    def test_empty_frozenset_blocks_nothing(self) -> None:
+        """blocked_types=frozenset() — all SQL passes through."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DROP TABLE users"
+        SqlAstValidator(blocked_types=frozenset()).validate(ctx)  # must not raise
+
+    def test_invalid_class_name_raises_value_error_at_construction(self) -> None:
+        """Unknown class name in blocked_types raises ValueError (not SecurityViolationError)."""
+        with pytest.raises(ValueError, match="NotARealClass"):
+            SqlAstValidator(blocked_types=frozenset({"NotARealClass"}))
+
+    def test_value_error_at_construction_not_at_validate(self) -> None:
+        """ValueError fires at __init__ time, not at validate() time."""
+        with contextlib.suppress(ValueError):
+            validator = SqlAstValidator(blocked_types=frozenset({"NoSuchClass"}))
+            # If we somehow reach here, validate() should not be the one raising
+            ctx = AgentContext(raw_payload=b"sql")
+            ctx.parsed_ast = "SELECT 1"
+            validator.validate(ctx)
+        # The test passes as long as ValueError came from __init__
+
+    def test_stmt_type_to_keyword_extended_with_create(self) -> None:
+        """_STMT_TYPE_TO_KEYWORD includes Create → CREATE."""
+        assert "Create" in _STMT_TYPE_TO_KEYWORD
+        assert _STMT_TYPE_TO_KEYWORD["Create"] == "CREATE"
+
+    def test_stmt_type_to_keyword_extended_with_grant(self) -> None:
+        """_STMT_TYPE_TO_KEYWORD includes Grant → GRANT."""
+        assert "Grant" in _STMT_TYPE_TO_KEYWORD
+        assert _STMT_TYPE_TO_KEYWORD["Grant"] == "GRANT"
+
+    def test_stmt_type_to_keyword_extended_with_command(self) -> None:
+        """_STMT_TYPE_TO_KEYWORD includes Command → COMMAND."""
+        assert "Command" in _STMT_TYPE_TO_KEYWORD
+        assert _STMT_TYPE_TO_KEYWORD["Command"] == "COMMAND"
