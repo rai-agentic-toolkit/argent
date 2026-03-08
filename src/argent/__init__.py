@@ -19,10 +19,12 @@ from argent.ingress.exceptions import NestingDepthError, PayloadTooLargeError
 from argent.ingress.parser import SinglePassParser
 from argent.ingress.validators import ByteSizeValidator, DepthLimitValidator
 from argent.pipeline.context import AgentContext, ExecutionState
-from argent.pipeline.pipeline import Pipeline, SecurityValidator
-from argent.pipeline.telemetry import Telemetry
 
 # Security — Epic 5
+# SecurityValidator Protocol is defined in pipeline/pipeline.py per ADR-0004 Decision 4
+# (avoids an upward Epic 1 → Epic 5 dependency) and re-exported here for discoverability.
+from argent.pipeline.pipeline import Pipeline, SecurityValidator
+from argent.pipeline.telemetry import Telemetry
 from argent.security.exceptions import SecurityViolationError
 from argent.security.sql_validator import SqlAstValidator
 

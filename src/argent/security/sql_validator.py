@@ -13,6 +13,7 @@ Blocked statement types: ``DROP``, ``DELETE``, ``TRUNCATE``, ``ALTER``.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from argent.security.exceptions import SecurityViolationError
@@ -23,6 +24,15 @@ if TYPE_CHECKING:
 # sqlglot AST class names (verified against sqlglot >= 20.0.0) for the four
 # destructive DML operations blocked by this policy.
 _BLOCKED_STMT_TYPES: frozenset[str] = frozenset({"Drop", "Delete", "TruncateTable", "Alter"})
+
+# Maps sqlglot AST class names to their SQL keyword equivalents for
+# operator-facing error messages (verified against sqlglot >= 20.0.0).
+_STMT_TYPE_TO_KEYWORD: dict[str, str] = {
+    "Drop": "DROP",
+    "Delete": "DELETE",
+    "TruncateTable": "TRUNCATE",
+    "Alter": "ALTER",
+}
 
 _POLICY_NAME = "SqlAstValidator"
 
@@ -40,9 +50,9 @@ class SqlAstValidator:
     SQL payloads.
 
     Raises:
-        SecurityViolationError: At construction time if ``sqlglot`` is not
-            installed.  Install the ``sql`` optional extra to enable:
-            ``pip install argent[sql]``.
+        ImportError: At construction time if ``sqlglot`` is not installed.
+            Install the ``sql`` optional extra to enable:
+            ``pip install argent[sql]``
         SecurityViolationError: From :meth:`validate` when a destructive
             SQL statement is detected in ``context.parsed_ast``.
     """
@@ -51,12 +61,9 @@ class SqlAstValidator:
         try:
             import sqlglot  # noqa: F401 PLC0415
         except ImportError:
-            raise SecurityViolationError(
-                policy_name=_POLICY_NAME,
-                reason=(
-                    "sqlglot is not installed; SQL validation is unavailable. "
-                    "Install the 'sql' optional extra: pip install argent[sql]"
-                ),
+            raise ImportError(
+                "sqlglot is not installed; SQL validation is unavailable. "
+                "Install the 'sql' optional extra: pip install argent[sql]"
             ) from None
 
     def validate(self, context: AgentContext) -> None:
@@ -76,9 +83,16 @@ class SqlAstValidator:
 
         try:
             statements = sqlglot.parse(context.parsed_ast)
-        except Exception:
-            # Unparseable SQL is not our concern — malformed queries are
-            # rejected at the database layer, not the security layer.
+        except sqlglot.errors.ParseError:
+            # Malformed SQL is rejected at the database layer, not the security layer.
+            return
+        except Exception as exc:
+            # Unexpected sqlglot error — emit a diagnostic and allow the payload through.
+            # The database layer is the final authority on malformed or unusual input.
+            sys.stderr.write(
+                f"[argent.security] SqlAstValidator: unexpected error from sqlglot.parse: "
+                f"{type(exc).__name__}: {exc}\n"
+            )
             return
 
         for stmt in statements:
@@ -86,10 +100,8 @@ class SqlAstValidator:
                 continue
             stmt_type = type(stmt).__name__
             if stmt_type in _BLOCKED_STMT_TYPES:
+                keyword = _STMT_TYPE_TO_KEYWORD.get(stmt_type, stmt_type)
                 raise SecurityViolationError(
                     policy_name=_POLICY_NAME,
-                    reason=(
-                        f"Destructive SQL statement blocked: {stmt_type} "
-                        f"(BR-03: semantic validation via sqlglot AST)"
-                    ),
+                    reason=f"Destructive SQL statement blocked: {keyword}",
                 )

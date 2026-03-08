@@ -1,14 +1,14 @@
 """Tests for SecurityValidator Protocol and SecurityViolationError.
 
 CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
-before src/argent/security/base.py and src/argent/security/exceptions.py exist.
+before src/argent/security/exceptions.py and the SecurityValidator Protocol
+in src/argent/pipeline/pipeline.py exist.
 """
 
 import pytest
 
 from argent.pipeline.context import AgentContext, ExecutionState
-from argent.pipeline.pipeline import Pipeline
-from argent.security.base import SecurityValidator
+from argent.pipeline.pipeline import Pipeline, SecurityValidator
 from argent.security.exceptions import SecurityViolationError
 
 

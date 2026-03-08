@@ -22,12 +22,12 @@ class TestSqlAstValidatorConstruction:
         validator = SqlAstValidator()
         assert isinstance(validator, SqlAstValidator)
 
-    def test_raises_security_violation_when_sqlglot_missing(
+    def test_raises_import_error_when_sqlglot_missing(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """SqlAstValidator raises SecurityViolationError (not ImportError) when sqlglot absent."""
+        """SqlAstValidator raises ImportError (not SecurityViolationError) when sqlglot absent."""
         monkeypatch.setitem(sys.modules, "sqlglot", None)
-        with pytest.raises(SecurityViolationError, match="sqlglot"):
+        with pytest.raises(ImportError, match="sqlglot"):
             SqlAstValidator()
 
 
@@ -82,11 +82,26 @@ class TestSqlAstValidatorEdgeCases:
     def test_handles_sqlglot_parse_exception_gracefully(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """When sqlglot.parse raises, the validator returns without error."""
-        monkeypatch.setattr(sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("boom")))
+        """When sqlglot.parse raises ParseError, the validator returns without error."""
+        monkeypatch.setattr(
+            sqlglot, "parse", lambda _: (_ for _ in ()).throw(sqlglot.errors.ParseError("boom"))
+        )
         ctx = AgentContext(raw_payload=b"sql")
         ctx.parsed_ast = "some sql"
         SqlAstValidator().validate(ctx)  # must not raise
+
+    def test_handles_unexpected_sqlglot_error_with_stderr_diagnostic(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """When sqlglot.parse raises an unexpected error, validator returns and emits to stderr."""
+        monkeypatch.setattr(
+            sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("unexpected"))
+        )
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "some sql"
+        SqlAstValidator().validate(ctx)  # must not raise
+        captured = capsys.readouterr()
+        assert "[argent.security]" in captured.err
 
 
 class TestSqlAstValidatorBlockingCases:
@@ -99,7 +114,7 @@ class TestSqlAstValidatorBlockingCases:
         with pytest.raises(SecurityViolationError) as exc_info:
             SqlAstValidator().validate(ctx)
         assert exc_info.value.policy_name == "SqlAstValidator"
-        assert "DROP" in exc_info.value.reason.upper() or "drop" in exc_info.value.reason.lower()
+        assert "DROP" in exc_info.value.reason
 
     def test_blocks_delete(self) -> None:
         """DELETE FROM raises SecurityViolationError."""
