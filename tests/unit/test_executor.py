@@ -6,6 +6,7 @@ asyncio_mode = "auto" in pyproject.toml runs them without extra decorators.
 
 from __future__ import annotations
 
+import concurrent.futures
 import time
 
 import pytest
@@ -173,3 +174,45 @@ class TestExceptionPropagation:
         # Budget unchanged — record_call was never called
         assert budget.remaining_tokens == 1000
         assert budget.remaining_calls == 10
+
+
+class TestCustomExecutor:
+    """Tests for P6-T02: configurable thread pool Executor in ToolExecutor.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
+    until ToolExecutor gains an `executor` field.
+    """
+
+    async def test_executor_field_defaults_to_none(self) -> None:
+        """ToolExecutor.executor defaults to None (process-default pool)."""
+        executor = ToolExecutor()
+        assert executor.executor is None
+
+    async def test_custom_executor_is_used_and_returns_result(self) -> None:
+        """ToolExecutor accepts a custom ThreadPoolExecutor and returns tool result."""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            executor = ToolExecutor(executor=pool)
+            result = await executor.execute(lambda: "from-custom-pool")
+        assert result == "from-custom-pool"
+
+    async def test_custom_executor_does_not_affect_timeout(self) -> None:
+        """Timeout enforcement still works with a custom executor."""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            executor = ToolExecutor(executor=pool, timeout_seconds=0.05)
+            with pytest.raises(ToolTimeoutError):
+                await executor.execute(lambda: time.sleep(5))
+
+    async def test_custom_executor_with_budget_records_correctly(self) -> None:
+        """Budget is recorded correctly when a custom executor is provided."""
+        budget = RequestBudget(max_calls=10, max_tokens=1000)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            executor = ToolExecutor(budget=budget, executor=pool)
+            await executor.execute(lambda: None, token_cost=100)
+        assert budget.remaining_tokens == 900
+        assert budget.remaining_calls == 9
+
+    async def test_none_executor_uses_default_pool(self) -> None:
+        """ToolExecutor(executor=None) behaves identically to ToolExecutor()."""
+        executor = ToolExecutor(executor=None)
+        result = await executor.execute(lambda: "default-pool")
+        assert result == "default-pool"

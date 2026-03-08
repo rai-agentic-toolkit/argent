@@ -145,6 +145,42 @@ class TestDepthLimitValidator:
         assert ctx.execution_state is ExecutionState.PENDING
 
 
+class TestDepthLimitValidatorQuoteAwareness:
+    """Tests for P6-T03: quote-aware bracket counting in _estimate_depth.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
+    until _estimate_depth is updated to skip brackets inside string literals.
+    """
+
+    def test_brackets_inside_string_value_score_depth_one(self) -> None:
+        """Brackets inside a quoted string don't increment structural depth."""
+        payload = b'{"key": "value with {braces} and [brackets]"}'
+        assert DepthLimitValidator._estimate_depth(payload) == 1
+
+    def test_escaped_quote_does_not_end_string_tracking(self) -> None:
+        """Escaped quote inside a string doesn't prematurely end string mode."""
+        payload = b'{"key": "say \\"hello {world}\\""}'
+        assert DepthLimitValidator._estimate_depth(payload) == 1
+
+    def test_legitimate_nesting_depth_unchanged(self) -> None:
+        """Real structural nesting still computes the correct depth."""
+        payload = b'{"a": {"b": [1, 2]}}'
+        assert DepthLimitValidator._estimate_depth(payload) == 3
+
+    def test_string_with_bracket_and_outer_nesting(self) -> None:
+        """Template string in one key does not pollute depth of real nesting."""
+        payload = b'{"template": "use {var}", "data": {"nested": true}}'
+        # Structural brackets: outer { at depth 1, inner { at depth 2
+        assert DepthLimitValidator._estimate_depth(payload) == 2
+
+    async def test_deeply_nested_with_string_brackets_passes(self) -> None:
+        """Structural depth 3 with string brackets is not incorrectly rejected."""
+        ctx = AgentContext(raw_payload=b'{"a": {"b": {"msg": "no {nesting} here"}}}')
+        # Structural depth is 3 (three real { levels); string {nesting} must not count
+        validator = DepthLimitValidator(max_depth=3)
+        await validator(ctx)  # must not raise — depth == limit == 3
+
+
 class TestValidatorsAsMiddleware:
     """Tests confirming validators plug into the async Pipeline."""
 
