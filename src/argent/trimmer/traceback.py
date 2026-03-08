@@ -7,6 +7,10 @@ end.  Truncation keeps the tail and prepends a marker.
 
 from __future__ import annotations
 
+import logging
+
+_logger = logging.getLogger("argent.trimmer")
+
 
 class PythonTracebackTrimmer:
     """Truncate Python tracebacks by keeping the tail (final frames).
@@ -38,4 +42,11 @@ class PythonTracebackTrimmer:
         tail = content[-self._max_chars :]
         dropped = len(content) - self._max_chars
         marker = f"[... {dropped} chars truncated ...]\n"
-        return marker + tail
+        result = marker + tail
+        _logger.info(
+            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            self.__class__.__name__,
+            dropped,
+            self._max_chars,
+        )
+        return result

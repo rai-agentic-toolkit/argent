@@ -95,18 +95,18 @@ class TestSqlAstValidatorEdgeCases:
         ctx.parsed_ast = "some sql"
         SqlAstValidator().validate(ctx)  # must not raise
 
-    def test_handles_unexpected_sqlglot_error_with_stderr_diagnostic(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_handles_unexpected_sqlglot_error_with_warning_log(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """When sqlglot.parse raises an unexpected error, validator returns and emits to stderr."""
+        """When sqlglot.parse raises an unexpected error, validator returns and logs a WARNING."""
         monkeypatch.setattr(
             sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("unexpected"))
         )
         ctx = AgentContext(raw_payload=b"sql")
         ctx.parsed_ast = "some sql"
-        SqlAstValidator().validate(ctx)  # must not raise
-        captured = capsys.readouterr()
-        assert "[argent.security]" in captured.err
+        with caplog.at_level(logging.WARNING, logger="argent.security"):
+            SqlAstValidator().validate(ctx)  # must not raise
+        assert any("[argent.security]" in r.message for r in caplog.records)
 
 
 class TestSqlAstValidatorBlockingCases:

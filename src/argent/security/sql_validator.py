@@ -13,13 +13,15 @@ Blocked statement types: ``DROP``, ``DELETE``, ``TRUNCATE``, ``ALTER``.
 
 from __future__ import annotations
 
-import sys
+import logging
 from typing import TYPE_CHECKING
 
 from argent.security.exceptions import SecurityViolationError
 
 if TYPE_CHECKING:
     from argent.pipeline.context import AgentContext
+
+_logger = logging.getLogger("argent.security")
 
 # sqlglot AST class names (verified against sqlglot >= 20.0.0) for the four
 # destructive DML operations blocked by this policy.
@@ -89,9 +91,10 @@ class SqlAstValidator:
         except Exception as exc:
             # Unexpected sqlglot error — emit a diagnostic and allow the payload through.
             # The database layer is the final authority on malformed or unusual input.
-            sys.stderr.write(
-                f"[argent.security] SqlAstValidator: unexpected error from sqlglot.parse: "
-                f"{type(exc).__name__}: {exc}\n"
+            _logger.warning(
+                "[argent.security] SqlAstValidator: unexpected error from sqlglot.parse: %s: %s",
+                type(exc).__name__,
+                exc,
             )
             return
 
@@ -101,6 +104,10 @@ class SqlAstValidator:
             stmt_type = type(stmt).__name__
             if stmt_type in _BLOCKED_STMT_TYPES:
                 keyword = _STMT_TYPE_TO_KEYWORD.get(stmt_type, stmt_type)
+                _logger.info(
+                    "[argent.security] SqlAstValidator: blocked %s statement",
+                    keyword,
+                )
                 raise SecurityViolationError(
                     policy_name=_POLICY_NAME,
                     reason=f"Destructive SQL statement blocked: {keyword}",

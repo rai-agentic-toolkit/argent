@@ -7,6 +7,10 @@ table fits within the character budget (BR-02).
 
 from __future__ import annotations
 
+import logging
+
+_logger = logging.getLogger("argent.trimmer")
+
 
 def _is_separator(line: str) -> bool:
     """Return True if *line* is a Markdown table separator row."""
@@ -64,8 +68,21 @@ class MarkdownTableTrimmer:
         while kept_rows:
             candidate = "\n".join([header, separator, *kept_rows])
             if len(candidate) <= self._max_chars:
+                _logger.info(
+                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    self.__class__.__name__,
+                    len(content) - len(candidate),
+                    self._max_chars,
+                )
                 return candidate
             kept_rows.pop()
 
         # Only header + separator remain
-        return "\n".join([header, separator])
+        result = "\n".join([header, separator])
+        _logger.info(
+            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            self.__class__.__name__,
+            len(content) - len(result),
+            self._max_chars,
+        )
+        return result

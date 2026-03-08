@@ -33,7 +33,10 @@ dependencies = [
 sql = [
     # Optional extra: enables SqlAstValidator semantic SQL parsing (BR-03).
     # Install with: pip install argent[sql]
-    "sqlglot>=20.0.0",
+    # Upper bound <30.0.0: _BLOCKED_STMT_TYPES AST class names verified against
+    # sqlglot 29.0.1; a major version bump may rename internal node classes,
+    # breaking the policy silently. See P7-T03 version contract test.
+    "sqlglot>=20.0.0,<30.0.0",
 ]
 examples = [
     # Optional extra: required to run examples/basic_agent.py.
@@ -60,7 +63,8 @@ dev = [
     "types-PyYAML>=6.0",
     # sqlglot included in dev to run P5-T02 tests against the real library;
     # production consumers use the [sql] optional extra instead.
-    "sqlglot>=20.0.0",
+    # Upper bound matches [sql] extra (see P7-T03 version contract test).
+    "sqlglot>=20.0.0,<30.0.0",
     # anthropic included in dev so CI mypy can resolve types in examples/.
     # The examples/ scripts cannot be smoke-tested in CI (require a live API key);
     # only static analysis (ruff, mypy, bandit) is run against them in CI.

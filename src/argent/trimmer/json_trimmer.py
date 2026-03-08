@@ -12,7 +12,10 @@ BR-02 (No Blind Truncation): truncation always produces valid JSON.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+_logger = logging.getLogger("argent.trimmer")
 
 
 class JsonArrayTrimmer:
@@ -60,12 +63,25 @@ class JsonArrayTrimmer:
             candidate_items = [*items, tombstone]
             candidate = json.dumps(candidate_items)
             if len(candidate) <= self._max_chars:
+                _logger.info(
+                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    self.__class__.__name__,
+                    len(content) - len(candidate),
+                    self._max_chars,
+                )
                 return candidate
             items.pop()
 
         # Even a single-element tombstone array
         tombstone = f"... [{original_len} items truncated]"
-        return json.dumps([tombstone])
+        result = json.dumps([tombstone])
+        _logger.info(
+            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            self.__class__.__name__,
+            len(content) - len(result),
+            self._max_chars,
+        )
+        return result
 
 
 class JsonDictTrimmer:
@@ -116,7 +132,20 @@ class JsonDictTrimmer:
             del remaining[key]
             candidate = json.dumps(remaining)
             if len(candidate) <= self._max_chars:
+                _logger.info(
+                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    self.__class__.__name__,
+                    len(content) - len(candidate),
+                    self._max_chars,
+                )
                 return candidate
 
         # Reached when break fires (len(remaining) == 1): return the single remaining key.
-        return json.dumps(remaining)
+        result = json.dumps(remaining)
+        _logger.info(
+            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            self.__class__.__name__,
+            len(content) - len(result),
+            self._max_chars,
+        )
+        return result
