@@ -12,6 +12,22 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 ---
 
+## [2026-03-08] P8-T01/T04 — API Integrity (ContextBudgetCalculator + Test Hygiene)
+
+### QA
+PASS — 283 tests at 99.43% coverage. Edge cases covered: zero remaining tokens (floor fires), reserved_tokens > remaining_tokens (negative raw clamped to zero, floor fires), partially depleted budget, large token budgets, custom chars_per_token. The `test_context_window_tokens_no_longer_exists` test locks the v0.2.0 breaking change at the test layer. Advisory: construction tests assert private attrs (`_chars_per_token`, `_reserved_tokens`). Trade-off is acceptable for a pre-1.0 library; if internals change, compute() tests will still pass while construction tests break — reviewers should watch for this divergence. The `_call_count` → `remaining_calls` replacement in integration tests is semantically exact (`remaining_calls = max_calls - _call_count`).
+
+### UI/UX
+SKIP — pure library internals. No HTML, templates, form elements, interactive components, or routes modified. The `reserved_tokens` name is more actionable than the dead `context_window_tokens` for any future web UI form field or tooltip.
+
+### DevOps
+PASS — gitleaks clean (63 commits). bandit: 0 issues. No new logging or PII surface. `max(0, ...)` and floor guards prevent harmful output from pathological reserved_tokens values. Advisory: CI matrix (Python 3.11/3.12) lags local dev runtime (3.14.1) — pre-existing gap, unchanged by this diff.
+
+### Architecture
+FINDING (addressed) — `test_execution_state_lifecycle` is async in a class alongside synchronous tests. Reviewer flagged risk of silent non-execution without explicit `@pytest.mark.asyncio`. Confirmed: `asyncio_mode = "auto"` in pyproject.toml handles this correctly — targeted run shows `1 passed in 0.01s`. No code change required. Pattern established: mixed sync/async methods in a single test class are valid under `asyncio_mode = "auto"`; no per-method markers needed. Document this as the project standard so contributors do not add unnecessary decorators.
+
+---
+
 ## [2026-03-08] P7-T01/T02/T03 — Maintenance & Observability
 
 ### QA
