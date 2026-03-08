@@ -1,61 +1,24 @@
 # Argent — Agentic Runtime Gateway
 
-**Status**: Work in progress. Phases 0–2 complete, Phase 3 in progress, Phases 4–6 not started.
-**Coverage**: 98.95% branch · **Type checking**: mypy strict · **Python**: ≥ 3.11
+**Coverage**: 99.41% · **Type checking**: mypy strict · **Python**: ≥ 3.11 · **Status**: All 6 delivery phases complete
 
 ---
 
 ## What This Is
 
-Argent (ARG) is a deterministic, middleware-driven execution wrapper for AI agents. It sits between an untrusted LLM agent and the tools/data it wants to touch, enforcing payload hygiene, execution budgets, and output compression through a four-stage async pipeline.
+Argent (ARG) is a deterministic, middleware-driven execution wrapper for AI agents. It sits between your LLM and the tools it wants to call, enforcing payload hygiene, execution budgets, format-aware output trimming, and pluggable security policies through a four-stage async pipeline.
 
-It is a **library**, not a framework. You wire it into your agent loop. It does not manage your LLM calls, prompt templates, or orchestration.
+It is a **library, not a framework**. You wire it into your agent loop. It does not manage your LLM calls, prompt templates, or orchestration. Zero vendor lock-in — works with any model provider.
 
 ## What This Is Not
 
-- Not a LangChain alternative. No prompt abstractions, no chains, no agent executors.
-- Not production-ready. The core pipeline and two of five epics are implemented. The remaining three (output trimming, security policies, end-to-end integration) are specified but unbuilt.
-- Not a hosted service. It's a Python package you install and configure.
+- Not a LangChain alternative — no prompt abstractions, no chains, no agent executors.
+- Not a hosted service — it's a Python package you install and configure.
+- Not opinionated about your LLM — the `examples/` directory uses the Anthropic SDK; the library itself has no LLM dependency.
 
-## What Works Today
+---
 
-| Component | Epic | Status | What It Does |
-|-----------|------|--------|--------------|
-| `pipeline/` | Core | ✅ Complete | `AgentContext` state machine, four-stage async middleware chain (`ingress → pre_execution → execution → egress`), structured telemetry with try/finally guarantees |
-| `ingress/` | The Shield | ✅ Complete | Pre-allocation byte-size and nesting-depth validators, single-pass format detection (JSON/YAML/XML/plaintext), `defusedxml` for XXE protection |
-| `budget/` | The Leash | 🔧 In Progress | Stateful call and token counters with hard limits (BR-01), async tool executor with timeout enforcement and recursion traps. ExecutionState wiring is the remaining task. |
-| `trimmer/` | The Trimmer | ⬚ Not Started | Format-aware output truncation (Markdown tables, Python tracebacks, JSON structures) |
-| `security/` | The Guard | ⬚ Not Started | Pluggable security validators, SQL AST analysis via optional `sqlglot` |
-
-## Architecture
-
-```
-src/argent/
-├── pipeline/    → Foundation: AgentContext + middleware chain (zero external deps)
-├── ingress/     → Payload hygiene: validators + single-pass parser (defusedxml)
-├── budget/      → Execution limits: counters + async tool wrapper (stdlib only)
-├── trimmer/     → Output shaping (not yet implemented)
-└── security/    → Security policies (not yet implemented)
-```
-
-Dependency direction is strictly enforced: epic packages depend on `pipeline/`, never the reverse. This is documented in [ADR-0001](docs/adr/ADR-0001-package-topology.md) and was actively corrected when a violation was introduced in Phase 3 (see [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md)).
-
-The pipeline is async-first ([ADR-0002](docs/adr/ADR-0002-middleware-contract.md)). All middleware is `async def`. Synchronous tools are wrapped via `asyncio.run_in_executor`. This was a deliberate upfront decision — going sync at the foundation would have forced a breaking change at Epic 2.
-
-### Business Rules
-
-These are the inviolable constraints. If the framework violates any of them, it's a bug:
-
-| ID | Rule | Enforced By |
-|----|------|-------------|
-| BR-01 | Absolute budget enforcement — halt on `max_calls` or `max_tokens` | `budget/` |
-| BR-02 | No blind truncation — preserve structural integrity when compressing | `trimmer/` (not yet) |
-| BR-03 | Semantic over syntactic security — no naive substring blocking | `security/` (not yet) |
-| BR-04 | Pre-allocation limits — reject oversized inputs before parsing | `ingress/` |
-
-## Installation
-
-Not published to PyPI. Clone and install in development mode:
+## Quick Start
 
 ```bash
 git clone https://github.com/rai-agentic-toolkit/argent.git
@@ -63,80 +26,166 @@ cd argent
 pip install -e ".[dev]"
 ```
 
-## Running Tests
+Run the end-to-end example (requires `ANTHROPIC_API_KEY`):
 
 ```bash
-pytest --cov=src/argent --cov-fail-under=90 -v
+pip install -e ".[examples]"
+export ANTHROPIC_API_KEY=sk-ant-...
+python examples/basic_agent.py
 ```
-
-All quality gates (run via pre-commit):
-
-```bash
-pre-commit run --all-files
-```
-
-This runs ruff (lint + format), mypy (strict), bandit, detect-secrets, gitleaks, vulture, and commitizen.
 
 ---
 
-## The Methodology: AI-Driven Development Under Governance
+## What's Shipped
 
-This section exists because the methodology is as much the point as the code. Argent is being built almost entirely by an LLM coding agent (Claude) operating under a structured governance framework. The framework is designed to answer a specific question: **can you get reliable, secure, well-tested code from an autonomous AI agent if you give it sufficiently rigorous constraints?**
+Every planned component is implemented, tested at ≥99% coverage, and documented with an ADR.
 
-The early evidence says yes, with caveats.
+| Component | Epic | What It Does |
+|-----------|------|--------------|
+| `pipeline/` | Core | `AgentContext` state machine, four-stage async middleware chain (`ingress → pre_execution → execution → egress`), structured telemetry with try/finally guarantees, `SecurityValidator` protocol |
+| `ingress/` | The Shield | Pre-allocation byte-size and nesting-depth validators (quote-aware bracket counting), single-pass format detection (JSON / YAML / XML / plaintext), `defusedxml` for XXE protection |
+| `budget/` | The Leash | Stateful call and token counters with hard limits (BR-01), async `ToolExecutor` with timeout and recursion protection, optional custom thread pool injection for concurrent deployments |
+| `trimmer/` | The Trimmer | Format-aware truncators for JSON arrays, JSON dicts, Markdown tables, and Python tracebacks; `ContextBudgetCalculator` for dynamic token-to-char allocation (BR-02) |
+| `security/` | The Guard | `SecurityValidator` protocol, SQL AST validator via optional `sqlglot` extra blocking DROP / DELETE / TRUNCATE / ALTER (BR-03) |
 
-### How It Works
+---
 
-The developer (a human) defines requirements, reviews pull requests, and merges to main. Everything between "here's the next task" and "here's a PR for review" is executed by the AI agent, operating under three governance documents:
-
-1. **[CONSTITUTION.md](CONSTITUTION.md)** — A priority-ordered rule hierarchy (Priority 0: Security, Priority 1: Quality Gates, Priority 3: TDD, etc.). When rules conflict, the lower-numbered priority wins. The agent cannot bypass quality gates, skip tests, or commit secrets. These aren't suggestions — the agent is instructed to halt and report a blocker rather than violate any rule.
-
-2. **[AUTONOMOUS_DEVELOPMENT_PROMPT.md](AUTONOMOUS_DEVELOPMENT_PROMPT.md)** — The operational workflow. Defines exactly how the agent discovers tasks, plans work, writes failing tests first, implements, runs quality gates, spawns parallel review subagents, creates PRs, and updates retrospective logs. Versioned (currently 1.4.0) and amended when the process itself has a gap.
-
-3. **[CLAUDE.md](CLAUDE.md)** — Project-specific operational directives: file placement rules, naming conventions, PII protection procedures, emergency procedures for accidentally staged secrets.
-
-### The TDD Loop
-
-Every feature follows RED → GREEN → REVIEW, committed separately:
+## Architecture
 
 ```
-test: add failing tests for [feature] (RED)     ← tests import symbols that don't exist yet
-feat: implement [feature] (GREEN)                ← minimal code to pass
-review(qa): [task] — PASS/FINDING                ← QA subagent review
-review(ui-ux): [task] — SKIP                     ← UI/UX subagent (skips on backend work)
-review(devops): [task] — PASS/FINDING            ← DevOps subagent review
-review(arch): [task] — PASS/FINDING              ← Architecture subagent review
-docs: update RETRO_LOG for [task]                ← retrospective entry
+src/argent/
+├── pipeline/    → Foundation: AgentContext + async middleware chain (zero external deps)
+├── ingress/     → Payload hygiene: validators + single-pass parser (defusedxml hard dep)
+├── budget/      → Execution limits: counters + async tool wrapper (stdlib only)
+├── trimmer/     → Output shaping: format-aware truncators + dynamic budget calculator
+└── security/    → Security policies: SecurityValidator protocol + SQL AST validator
 ```
 
-You can verify the TDD discipline by diffing any RED commit — the test files import classes that won't exist until the GREEN commit. This isn't aspirational; it's the actual commit history.
+**Dependency direction** is strictly enforced per [ADR-0001](docs/adr/ADR-0001-package-topology.md): epic packages depend on `pipeline/`, never the reverse. Higher-numbered epics may reference lower-numbered ones via `TYPE_CHECKING` annotation guards; lateral cross-epic imports are forbidden.
 
-### The Review Subagents
+**Async-first** per [ADR-0002](docs/adr/ADR-0002-middleware-contract.md): all middleware is `async def`. Synchronous tools are offloaded via `asyncio.run_in_executor`. This was a deliberate upfront decision — going sync at the foundation would have forced a breaking change at Epic 2.
 
-After the GREEN phase, four specialized review subagents are spawned in parallel, each with a defined checklist:
+### Business Rules
 
-- **QA** — Dead code, exception specificity, edge cases, meaningful assertions, docstring accuracy, type annotation correctness
-- **UI/UX** — WCAG 2.1 AA compliance (skipped on pure backend work, which is everything so far)
-- **DevOps** — Hardcoded credentials, PII in logs, blocking async calls, dependency audit, CI health
-- **Architecture** — File placement, dependency direction, async correctness, ADR compliance
+These are the inviolable constraints. A violation is a bug:
 
-Each subagent produces a structured finding (PASS / FINDING / SKIP per checklist item) and a Retrospective Note. Findings are fixed before merge; retrospective notes are appended to [docs/RETRO_LOG.md](docs/RETRO_LOG.md).
+| ID | Rule | Enforced By |
+|----|------|-------------|
+| BR-01 | Absolute budget enforcement — halt on `max_calls` or `max_tokens` | `budget/` |
+| BR-02 | No blind truncation — preserve structural integrity when compressing | `trimmer/` |
+| BR-03 | Semantic over syntactic security — no naive substring blocking | `security/` |
+| BR-04 | Pre-allocation limits — reject oversized inputs before parsing | `ingress/` |
 
-### What the Retro Log Actually Contains
+---
 
-Not boilerplate. Specific, actionable observations from each phase. Examples:
+## Usage
 
-- P3 Architecture review caught that `RequestBudget` was added as a field on `AgentContext`, creating an upward dependency from `pipeline/` → `budget/`. Fixed in the same PR cycle, documented in [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md).
-- P2 QA review identified that `yaml.YAMLError` was inaccessible from an outer except chain due to scoping. Restructured to `try/except ImportError/else` pattern.
-- P1 DevOps review noted the telemetry event schema deliberately emits only enum strings, never raw payload slices — a security-by-design pattern.
+### Minimal wiring
 
-### The Honest Caveats
+```python
+import asyncio
+from argent import (
+    AgentContext,
+    ByteSizeValidator,
+    DepthLimitValidator,
+    Pipeline,
+    RequestBudget,
+    SinglePassParser,
+    ToolExecutor,
+)
 
-**The context overhead is real.** The Constitution + autonomous prompt + CLAUDE.md total over 1,200 lines of instructions. That's a significant chunk of the agent's context window consumed by process governance before any code is written. The tradeoff is intentional — the developer is trading context budget for output reliability — but it's a nontrivial cost.
+async def run(raw_bytes: bytes) -> None:
+    # 1. Build ingress pipeline
+    pipeline = Pipeline(
+        ingress=[
+            ByteSizeValidator(max_bytes=1024 * 1024),  # 1 MiB cap
+            DepthLimitValidator(max_depth=20),           # no zip-bomb ASTs
+            SinglePassParser(),                          # JSON/YAML/XML/text
+        ]
+    )
 
-**The velocity is modest.** 45 commits across 3 days produced ~836 lines of production code. A significant portion of the commit history is review evidence and documentation. If you measure productivity by lines shipped per day, this process is slow. If you measure it by defect rate and architectural coherence, it's competitive.
+    # 2. Run ingress
+    ctx = AgentContext(raw_payload=raw_bytes)
+    await pipeline.run(ctx)                              # raises on violation
 
-**The review subagents are simulated reviewers, not independent humans.** They're the same LLM with different system prompts. The findings are real (they've caught actual bugs and design violations), but the independence has limits. The developer is aware of this — the process includes a loop-prevention mechanism that escalates to a human after 3 consecutive review cycles on the same issue.
+    # 3. Execute tools under budget
+    budget = RequestBudget(max_calls=10, max_tokens=5_000)
+    executor = ToolExecutor(budget=budget)
+    result = await executor.execute(your_tool_fn, token_cost=50)
+
+asyncio.run(run(b'{"action": "search", "query": "argent"}'))
+```
+
+### With security validation
+
+```python
+from argent import Pipeline, SqlAstValidator  # pip install argent[sql]
+
+pipeline = Pipeline(
+    ingress=[ByteSizeValidator(), DepthLimitValidator(), SinglePassParser()],
+    security_validators=[SqlAstValidator()],   # blocks DROP/DELETE/TRUNCATE/ALTER
+)
+```
+
+### With output trimming
+
+```python
+import json
+from argent import JsonDictTrimmer, ContextBudgetCalculator, RequestBudget
+
+budget = RequestBudget(max_calls=10, max_tokens=4_000)
+calc = ContextBudgetCalculator(reserved_tokens=500)
+char_budget = calc.compute(budget)
+
+trimmer = JsonDictTrimmer(max_chars=char_budget)
+safe_output = trimmer.trim(json.dumps(llm_response))
+```
+
+### Thread pool isolation (concurrent agents)
+
+```python
+import concurrent.futures
+from argent import ToolExecutor, RequestBudget
+
+budget = RequestBudget(max_calls=20, max_tokens=10_000)
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+    executor = ToolExecutor(budget=budget, executor=pool)
+    result = await executor.execute(my_tool, token_cost=100)
+```
+
+---
+
+## Installation
+
+Not on PyPI. Install from source:
+
+```bash
+# Core library
+pip install -e "."
+
+# Development (tests, linters, type stubs)
+pip install -e ".[dev]"
+
+# SQL AST validation
+pip install -e ".[sql]"
+
+# End-to-end example (requires ANTHROPIC_API_KEY)
+pip install -e ".[examples]"
+```
+
+---
+
+## Running Tests
+
+```bash
+# Tests + coverage gate (≥90%)
+poetry run pytest --cov=src/argent --cov-fail-under=90 -v
+
+# All quality gates
+poetry run pre-commit run --all-files
+```
+
+The pre-commit suite runs: ruff (lint + format), mypy (strict), bandit, detect-secrets, gitleaks, vulture, and commitizen — across `src/`, `tests/`, and `examples/`.
 
 ---
 
@@ -144,16 +193,90 @@ Not boilerplate. Specific, actionable observations from each phase. Examples:
 
 | ADR | Decision | Phase |
 |-----|----------|-------|
-| [ADR-0001](docs/adr/ADR-0001-package-topology.md) | Epic-per-subpackage layout, no flat `models/` directory | P0 |
-| [ADR-0002](docs/adr/ADR-0002-middleware-contract.md) | Async middleware contract for all pipeline stages | P1 |
+| [ADR-0001](docs/adr/ADR-0001-package-topology.md) | Epic-per-subpackage layout; no flat `models/` directory | P0 |
+| [ADR-0002](docs/adr/ADR-0002-middleware-contract.md) | Async middleware contract; exception propagation; telemetry guarantee | P1 |
 | [ADR-0003](docs/adr/ADR-0003-xml-security-dep.md) | `defusedxml` as hard runtime dependency (XXE protection) | P2 |
-| [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget kept off AgentContext; async executor strategy | P3 |
+| [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget off AgentContext; async executor; custom thread pool injection | P3/P6 |
+| [ADR-0005](docs/adr/ADR-0005-optional-sql-dependency.md) | sqlglot as optional extra; fail-fast ImportError; examples extra exemption | P5/P6 |
+
+---
+
+## The Methodology
+
+This section exists because the methodology is as much the point as the code. Argent is built almost entirely by an LLM coding agent (Claude) operating under a structured governance framework designed to answer one question: **can you get reliable, secure, well-tested code from an autonomous AI agent if you give it sufficiently rigorous constraints?**
+
+After 7 phases and ~260 tests at 99%+ coverage, the early evidence says yes — with the caveats documented honestly below.
+
+### Governance Documents
+
+The developer defines requirements, reviews PRs, and merges to main. Everything between "here's the next task" and "here's a PR for review" is the AI agent:
+
+1. **[CONSTITUTION.md](CONSTITUTION.md)** — Priority-ordered rule hierarchy. Priority 0: Security. Priority 1: Quality gates. Priority 3: TDD. When rules conflict, lower number wins. The agent halts and reports a blocker rather than violate any rule.
+
+2. **[AUTONOMOUS_DEVELOPMENT_PROMPT.md](AUTONOMOUS_DEVELOPMENT_PROMPT.md)** — Exact operational workflow: task discovery, failing-tests-first, quality gates, parallel review subagents, PR creation, retrospective logging.
+
+3. **[CLAUDE.md](CLAUDE.md)** — Project-specific directives: file placement, naming conventions, PII protection, emergency procedures for accidentally staged secrets.
+
+### The TDD Loop
+
+Every feature follows RED → GREEN → REVIEW, committed separately:
+
+```
+test: add failing tests for [feature]         ← tests import symbols that don't exist yet
+feat: implement [feature]                     ← minimal code to pass, all gates green
+fix: address review findings                  ← findings fixed before merge
+review(qa): [task] — PASS/FINDING            ← QA subagent structured checklist
+review(ui-ux): [task] — SKIP                 ← UI/UX subagent (skips backend-only work)
+review(devops): [task] — PASS/FINDING        ← DevOps subagent structured checklist
+review(arch): [task] — PASS/FINDING          ← Architecture subagent structured checklist
+docs: update RETRO_LOG for [task]            ← retrospective entry + advisory tracking
+```
+
+You can verify the TDD discipline by diffing any RED commit — test files import classes that don't exist until GREEN. This is the actual commit history, not aspirational documentation.
+
+### The Review Subagents
+
+Four specialized subagents run in parallel after each GREEN phase:
+
+- **QA** — Dead code, exception specificity, edge cases, meaningful assertions, type annotation accuracy, docstring correctness
+- **UI/UX** — WCAG 2.1 AA compliance; DX review (error messages, API ergonomics, onboarding clarity) when no UI surface exists
+- **DevOps** — Hardcoded credentials, PII in logs, blocking async calls, dependency audits, CI health, secrets hygiene
+- **Architecture** — File placement, dependency direction, async contract compliance, ADR drift
+
+Each agent produces a structured finding (PASS / FINDING / SKIP per item) and a Retrospective Note. Findings are fixed before merge. Notes go to [docs/RETRO_LOG.md](docs/RETRO_LOG.md).
+
+### Findings That Caught Real Bugs
+
+The review process has caught substantive issues across every phase:
+
+| Phase | Finding | Action |
+|-------|---------|--------|
+| P3 | `RequestBudget` added to `AgentContext` — upward dependency violation | Fixed same PR; ADR-0004 created |
+| P2 | `yaml.YAMLError` inaccessible from outer except due to scoping | Restructured to try/except ImportError/else |
+| P5 | `SqlAstValidator.__init__` raised wrong exception type for missing dep | Corrected to `ImportError` |
+| P5 | `security/base.py` created three import paths for one type | Deleted; single canonical path |
+| P6 | Sync `Anthropic` client in `async def run()` — event loop blocked | Replaced with `AsyncAnthropic` + `await` |
+| P6 | `response.content[0].text` without type guard on union SDK field | `isinstance(…, TextBlock)` guard added |
+| P6 | ADR-0004 Decision 2 became stale when executor wiring changed | Decision 5 appended same sprint |
+
+### The Honest Caveats
+
+**Context overhead is real.** The governance documents total ~1,200 lines consumed from the agent's context window before any code is written. The tradeoff is intentional, but non-trivial.
+
+**Velocity is modest by lines-of-code metrics.** ~260 tests and ~850 lines of production code across 7 phases. A significant fraction of the commit history is review evidence and documentation. Measured by defect rate, architectural coherence, and test quality, the output is competitive.
+
+**Review subagents are not independent humans.** They're the same LLM with different system prompts. Findings are real and have caught actual bugs and design violations, but the independence has limits the developer is aware of.
+
+---
 
 ## Project Tracking
 
 - [BACKLOG.md](BACKLOG.md) — Master phase tracker with dependency graph
 - [docs/backlog/](docs/backlog/) — Detailed per-phase task specifications
-- [docs/RETRO_LOG.md](docs/RETRO_LOG.md) — Living retrospective log
+- [docs/RETRO_LOG.md](docs/RETRO_LOG.md) — Living retrospective log (open advisories + phase notes)
+- [docs/adr/](docs/adr/) — Architecture decision records
+
+---
 
 ## License
 

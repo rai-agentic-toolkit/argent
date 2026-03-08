@@ -16,9 +16,10 @@ This document tracks overall project progress across all phases. Detailed task s
 | **3** | [Budgeting & Execution Isolation — The Leash](docs/backlog/phase-3.md) | Complete | 3/3 | Token/call counters, async tool wrapper, ExecutionState transitions |
 | **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Complete | 3/3 | ParsedPayload type fix, format-aware truncators, dynamic budget calculator |
 | **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Complete | 4/4 | SecurityValidator protocol, SQL AST validator, integration tests, public API |
-| **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Not Started | 0/3 | Working example, thread pool config, depth heuristic improvement |
+| **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Complete | 3/3 | Working example, thread pool config, depth heuristic improvement |
+| **7** | [Maintenance & Observability](docs/backlog/phase-7.md) | In Progress | 0/3 | Trimmer structured logging, security validator logging, sqlglot version contract |
 
-**Total Tasks**: 22
+**Total Tasks**: 25
 
 ---
 
@@ -63,7 +64,8 @@ All phases must never violate these inviolable laws:
 | [ADR-0001](docs/adr/ADR-0001-package-topology.md) | Package Topology | P0 |
 | [ADR-0002](docs/adr/ADR-0002-middleware-contract.md) | Async Middleware Contract | P1 |
 | [ADR-0003](docs/adr/ADR-0003-xml-security-dep.md) | XML Security Dependency (defusedxml) | P2 |
-| [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget/Context Coupling & Async Executor | P3 |
+| [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget/Context Coupling, Async Executor & custom Executor injection | P3/P6 |
+| [ADR-0005](docs/adr/ADR-0005-optional-sql-dependency.md) | Optional SQL dependency (sqlglot); examples extra exemption | P5/P6 |
 
 ---
 
