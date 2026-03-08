@@ -30,6 +30,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+sql = [
+    # Optional extra: enables SqlAstValidator semantic SQL parsing (BR-03).
+    # Install with: pip install argent[sql]
+    "sqlglot>=20.0.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -47,6 +52,9 @@ dev = [
     #  directly in [project.optional-dependencies] instead)
     "types-defusedxml>=0.7.0",
     "types-PyYAML>=6.0",
+    # sqlglot included in dev to run P5-T02 tests against the real library;
+    # production consumers use the [sql] optional extra instead.
+    "sqlglot>=20.0.0",
 ]
 
 [project.urls]
@@ -116,6 +124,12 @@ warn_unused_configs = true
 show_error_codes = true
 show_column_numbers = true
 pretty = true
+
+[[tool.mypy.overrides]]
+# sqlglot is an optional extra (argent[sql]) and ships no mypy stubs.
+# Ignore missing-import errors so mypy passes when the package is absent.
+module = ["sqlglot", "sqlglot.*"]
+ignore_missing_imports = true
 
 # =============================================================================
 # Pytest Configuration

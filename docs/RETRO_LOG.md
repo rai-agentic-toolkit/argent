@@ -8,9 +8,25 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| ADV-003 | `pragma: no cover` comment on `json_trimmer.py:121` is misleading — line IS reachable via the `break` path (loop exits, falls through to `return json.dumps(remaining)`). Comment says "break always fires before exhaustion" but that is the reason the line exists. Fix: either remove the pragma (line is covered) or correct the comment. | P5-T01 or any trimmer change | QA (P4 round 2) |
-| ADV-004 | Trimmer implementations produce no observability signal when truncation occurs. Callers cannot detect output was cut without inspecting the raw string. Future: emit a structured telemetry event (truncation type, chars_dropped) from egress trimming middleware. | P5 or telemetry pass | DevOps (P4 round 2) |
-| ADV-005 | `_MIN_CHARS = 256` in `calculator.py` lacks inline rationale (e.g. minimum legible error message length). Add a brief comment before it becomes institutional debt. | P5-T01 or any calculator change | Architecture (P4 round 2) |
+| ADV-004 | Trimmer implementations produce no observability signal when truncation occurs. Callers cannot detect output was cut without inspecting the raw string. Future: emit a structured telemetry event (truncation type, chars_dropped) from egress trimming middleware. | P6 or telemetry pass | DevOps (P4 round 2) |
+| ADV-006 | `SqlAstValidator` raises `SecurityViolationError` when `sqlglot.parse` raises unexpectedly (outer except) — emits stderr diagnostic only. A telemetry event on validator failure (blocked or error) would give operators observable counts without requiring caller-side exception catching and re-logging. | P6 | DevOps + QA (P5) |
+| ADV-007 | `sqlglot>=20.0.0` has no upper version bound. `_BLOCKED_STMT_TYPES` class names (`Drop`, `TruncateTable`, etc.) verified against sqlglot 29.0.1. A future sqlglot major release that renames internal AST node classes would silently pass destructive SQL without a test failure. Consider adding an upper bound or an explicit version contract test. | P6 | DevOps (P5) |
+
+---
+
+## [2026-03-07] P5-T01/T02/T03/T04 — The Guard (Pluggable Security Policies)
+
+### QA
+The Phase 5 implementation has strong test hygiene: 245 tests at 99.18% coverage with all edge cases covered (None/empty string/non-string parsed_ast, multi-statement batch, whitespace obfuscation, sqlglot absent, ParseError, unexpected RuntimeError). Two findings fixed: (1) bare `except Exception` narrowed to `sqlglot.errors.ParseError`; outer fallback now emits a `[argent.security]` stderr diagnostic for unexpected errors — consistent with the telemetry module's established pattern; (2) a new test `test_handles_unexpected_sqlglot_error_with_stderr_diagnostic` covers the outer handler. House rule to carry forward: any security-layer except block that permits a payload through is a potential false-negative path and must emit at least a WARNING. This is now consistent across telemetry and security layers.
+
+### UI/UX
+Three DX findings fixed: (1) `SqlAstValidator.__init__` now raises `ImportError` (not `SecurityViolationError`) for missing sqlglot — correct stdlib convention for missing optional dependency; prevents startup misconfiguration from being silently caught by payload-rejection handlers; (2) error messages now use SQL keywords (`DROP`, `TRUNCATE`) via a `_STMT_TYPE_TO_KEYWORD` mapping rather than sqlglot internal class names (`Drop`, `TruncateTable`) — operators reading logs see standard SQL, not library internals; (3) `SecurityValidator` import in `__init__.py` moved to Security block with explanatory comment. Advisory: the outer except block now emits a stderr diagnostic for unexpected parse errors, which partially addresses the runtime observability gap.
+
+### DevOps
+PASS — all security and operational checks green. gitleaks: no leaks. bandit: 0 issues. pip-audit: no known vulnerabilities. No new logging surface that could leak payload content. The optional-extra dependency pattern (sqlglot in [project.optional-dependencies].sql + [project.dev]) is correctly structured. mypy overrides for sqlglot/* correct and minimal. Two advisories filed for P6: security violation events not observable without caller-side logging (ADV-006); sqlglot AST class names verified against 29.0.1 with no upper bound — silent break risk on major version bump (ADV-007).
+
+### Architecture
+Three findings fixed: (1) `security/base.py` deleted — redundant re-export that created three import paths for `SecurityValidator`; now accessible only at `from argent import SecurityValidator` with explanatory comment in `__init__.py`; (2) `SqlAstValidator.__init__` exception type corrected to `ImportError`; (3) `docs/adr/ADR-0005-optional-sql-dependency.md` created documenting the sqlglot optional-extra decision, fail-fast ImportError pattern, lazy-import + mypy override rationale, security_validators wiring in pre_execution stage, and standing guideline for future optional extras. The Protocol placement in `pipeline/pipeline.py` is confirmed correct (alongside `Middleware`) — prevents any upward Epic 1 → Epic 5 dependency per ADR-0004 Decision 4.
 
 ---
 

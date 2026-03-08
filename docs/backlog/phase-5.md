@@ -2,8 +2,8 @@
 
 > **Goal**: Replace the flawed `CallGuard`. Build a semantic, AST-based security policy layer that evaluates tool inputs via structured parsing — never via naive substring matching. Complete the MVP with integration tests, a public API surface, and the end-to-end DoD scenario.
 
-**Status**: Not Started
-**Progress**: 0/4 tasks complete
+**Status**: Complete
+**Progress**: 4/4 tasks complete
 
 **Business Rules enforced here**: BR-03 (Semantic Over Syntactic Security)
 
@@ -13,10 +13,10 @@
 
 | ID | Task | Status | Dependencies |
 |----|------|--------|--------------|
-| P5-T01 | Define `SecurityValidator` Protocol | Not Started | P4 Complete |
-| P5-T02 | Implement SQL AST Validator | Not Started | P5-T01 |
-| P5-T03 | Integration Test Suite (MVP DoD) | Not Started | P5-T02 |
-| P5-T04 | Public API Surface | Not Started | P5-T03 |
+| P5-T01 | Define `SecurityValidator` Protocol | Complete | P4 Complete |
+| P5-T02 | Implement SQL AST Validator | Complete | P5-T01 |
+| P5-T03 | Integration Test Suite (MVP DoD) | Complete | P5-T02 |
+| P5-T04 | Public API Surface | Complete | P5-T03 |
 
 ---
 
@@ -24,7 +24,7 @@
 
 **Description**: Define the `SecurityValidator` protocol — the extension point for all pluggable security policies in ARG. Wire it into the `Pipeline` pre-execution stage so any registered validators are applied before tools run.
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 
@@ -32,15 +32,15 @@ As an operator, I need a clean, typed interface that I can implement to add proj
 
 ### Acceptance Criteria
 
-- [ ] `SecurityValidator` `Protocol` defined in `src/argent/security/base.py`
-- [ ] Protocol method: `def validate(self, context: AgentContext) -> None`
-- [ ] On violation: validate raises `SecurityViolationError` with a human-readable reason
-- [ ] `SecurityViolationError` defined in `src/argent/security/exceptions.py`
-- [ ] `SecurityViolationError` carries: `policy_name: str`, `reason: str`
-- [ ] `Pipeline` accepts `security_validators: list[SecurityValidator]` and applies them in pre-execution stage
-- [ ] An empty `security_validators` list is a valid (no-op) configuration
-- [ ] Zero external dependencies
-- [ ] 90%+ test coverage
+- [x] `SecurityValidator` `Protocol` defined in `src/argent/pipeline/pipeline.py` (ADR-0004 Decision 4)
+- [x] Protocol method: `def validate(self, context: AgentContext) -> None`
+- [x] On violation: validate raises `SecurityViolationError` with a human-readable reason
+- [x] `SecurityViolationError` defined in `src/argent/security/exceptions.py`
+- [x] `SecurityViolationError` carries: `policy_name: str`, `reason: str`
+- [x] `Pipeline` accepts `security_validators: list[SecurityValidator]` and applies them in pre-execution stage
+- [x] An empty `security_validators` list is a valid (no-op) configuration
+- [x] Zero external dependencies
+- [x] 90%+ test coverage (99.18%)
 
 ### Implementation Steps
 
@@ -102,14 +102,14 @@ As an operator running ARG-wrapped agents with database tool access, I need SQL 
 
 ### Acceptance Criteria
 
-- [ ] `SqlAstValidator` defined in `src/argent/security/sql_validator.py`
-- [ ] `SqlAstValidator` implements `SecurityValidator` protocol
-- [ ] Uses `sqlglot.parse` to build an AST from the SQL payload
-- [ ] Raises `SecurityViolationError` if AST contains: `DROP`, `DELETE`, `TRUNCATE`, or `ALTER` statements
-- [ ] Raises `SecurityViolationError` (not `ImportError`) with a clear advisory message if `sqlglot` is not installed
-- [ ] Skips validation without error if `context.parsed_ast` is not a SQL string (non-SQL contexts)
-- [ ] `sqlglot` listed as optional extra in `pyproject.toml`: `[project.optional-dependencies] sql = ["sqlglot>=20.0.0"]`
-- [ ] 90%+ test coverage (mock `sqlglot` in tests that test the import-error path)
+- [x] `SqlAstValidator` defined in `src/argent/security/sql_validator.py`
+- [x] `SqlAstValidator` implements `SecurityValidator` protocol
+- [x] Uses `sqlglot.parse` to build an AST from the SQL payload
+- [x] Raises `SecurityViolationError` if AST contains: `DROP`, `DELETE`, `TRUNCATE`, or `ALTER` statements
+- [x] Raises `ImportError` with a clear advisory message if `sqlglot` is not installed (review fix: stdlib convention)
+- [x] Skips validation without error if `context.parsed_ast` is not a SQL string (non-SQL contexts)
+- [x] `sqlglot` listed as optional extra in `pyproject.toml`: `[project.optional-dependencies] sql = ["sqlglot>=20.0.0"]`
+- [x] 90%+ test coverage (17 tests, 100% sql_validator.py)
 
 ### Implementation Steps
 
@@ -169,14 +169,14 @@ As a developer evaluating ARG, I need a runnable test that proves the assembled 
 
 ### Acceptance Criteria
 
-- [ ] `tests/integration/test_pipeline_end_to_end.py` created
-- [ ] Test 1: Oversized payload — `ByteSizeValidator(max_bytes=100)` rejects a 200-byte payload with `PayloadTooLargeError`; `execution_state` is `HALTED`
-- [ ] Test 2: SQL injection — `SqlAstValidator` rejects `DROP TABLE users` with `SecurityViolationError`; pipeline propagates it cleanly
-- [ ] Test 3: Infinite-loop tool — `ToolExecutor(timeout_seconds=0.1)` raises `ToolTimeoutError` for a `time.sleep(5)` tool; budget not charged
-- [ ] Test 4: Budget exhaustion — `RequestBudget(max_calls=1)` exhausted after first tool call; second call raises `BudgetExhaustedError` before tool runs
-- [ ] Test 5: Happy path — valid JSON payload passes all validators, is parsed and attached to `parsed_ast`, trimmer keeps output within budget, `execution_state` is `COMPLETE`
-- [ ] Each test builds a `Pipeline` from components; no mocks of ARG internals
-- [ ] All integration tests pass in CI
+- [x] `tests/integration/test_pipeline_end_to_end.py` created
+- [x] Test 1: Oversized payload — `ByteSizeValidator(max_bytes=100)` rejects a 200-byte payload with `PayloadTooLargeError`; `execution_state` is `HALTED`
+- [x] Test 2: SQL injection — `SqlAstValidator` rejects `DROP TABLE users` with `SecurityViolationError`; pipeline propagates it cleanly
+- [x] Test 3: Infinite-loop tool — `ToolExecutor(timeout_seconds=0.1)` raises `ToolTimeoutError` for a `time.sleep(5)` tool; budget not charged
+- [x] Test 4: Budget exhaustion — `RequestBudget(max_calls=1)` exhausted after first tool call; second call raises `BudgetExhaustedError` before tool runs
+- [x] Test 5: Happy path — valid JSON payload passes all validators, is parsed and attached to `parsed_ast`, trimmer keeps output within budget, `execution_state` is `COMPLETE`
+- [x] Each test builds a `Pipeline` from components; no mocks of ARG internals
+- [x] All integration tests pass in CI
 
 ### Implementation Steps
 
@@ -220,15 +220,15 @@ As a developer integrating ARG into my agent, I need `from argent import Pipelin
 
 ### Acceptance Criteria
 
-- [ ] `argent/__init__.py` re-exports: `Pipeline`, `AgentContext`, `ExecutionState`
-- [ ] `argent/__init__.py` re-exports: `RequestBudget`, `ToolExecutor`
-- [ ] `argent/__init__.py` re-exports exception types: `BudgetExhaustedError`, `ToolTimeoutError`, `ToolRecursionError`, `PayloadTooLargeError`, `NestingDepthError`
-- [ ] `argent/__init__.py` re-exports: `ByteSizeValidator`, `DepthLimitValidator`, `SinglePassParser`
-- [ ] `argent/__init__.py` re-exports trimmer types: `Trimmer` (protocol), all four concrete trimmer classes, `ContextBudgetCalculator`
-- [ ] `argent/__init__.py` re-exports security types: `SecurityValidator` (protocol), `SecurityViolationError`, `SqlAstValidator`
-- [ ] `__all__` defined explicitly to control `from argent import *` surface
-- [ ] Integration tests updated to import from `argent` directly (not from internal paths)
-- [ ] `mypy --strict` passes
+- [x] `argent/__init__.py` re-exports: `Pipeline`, `AgentContext`, `ExecutionState`
+- [x] `argent/__init__.py` re-exports: `RequestBudget`, `ToolExecutor`
+- [x] `argent/__init__.py` re-exports exception types: `BudgetExhaustedError`, `ToolTimeoutError`, `ToolRecursionError`, `PayloadTooLargeError`, `NestingDepthError`
+- [x] `argent/__init__.py` re-exports: `ByteSizeValidator`, `DepthLimitValidator`, `SinglePassParser`
+- [x] `argent/__init__.py` re-exports trimmer types: `Trimmer` (protocol), all four concrete trimmer classes, `ContextBudgetCalculator`
+- [x] `argent/__init__.py` re-exports security types: `SecurityValidator` (protocol), `SecurityViolationError`, `SqlAstValidator`
+- [x] `__all__` defined explicitly (23 types, sorted alphabetically per RUF022)
+- [x] Integration tests import from `argent` directly
+- [x] `mypy --strict` passes
 
 ### Implementation Steps
 

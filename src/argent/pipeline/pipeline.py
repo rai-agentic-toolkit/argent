@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from argent.pipeline.context import ExecutionState
 
@@ -19,6 +19,38 @@ if TYPE_CHECKING:
     from argent.pipeline.telemetry import Telemetry
 
 Middleware = Callable[["AgentContext"], Awaitable[None]]
+
+
+@runtime_checkable
+class SecurityValidator(Protocol):
+    """Protocol for synchronous security policy validators.
+
+    A SecurityValidator inspects the current :class:`~argent.pipeline.context.AgentContext`
+    and raises :class:`~argent.security.exceptions.SecurityViolationError` if the payload
+    violates the configured policy.  Returning normally means the payload is accepted.
+
+    Validators are synchronous (``def``, not ``async def``) because security
+    checks are CPU-bound string/AST operations with no I/O.
+
+    Example::
+
+        class MyPolicy:
+            def validate(self, context: AgentContext) -> None:
+                if b"forbidden" in context.raw_payload:
+                    raise SecurityViolationError("MyPolicy", "forbidden keyword detected")
+    """
+
+    def validate(self, context: AgentContext) -> None:  # pragma: no cover
+        """Inspect *context* and raise SecurityViolationError on violation.
+
+        Args:
+            context: The shared agent execution context.
+
+        Raises:
+            SecurityViolationError: If the payload violates this policy.
+        """
+        ...
+
 
 _STAGE_NAMES = ("ingress", "pre_execution", "execution", "egress")
 
@@ -36,6 +68,10 @@ class Pipeline:
             start/end events are emitted around every stage automatically.
             Telemetry end events are guaranteed via try/finally — stage_start
             events are never orphaned even when middleware raises.
+        security_validators: Synchronous :class:`SecurityValidator` instances
+            applied at the start of the pre_execution stage, before any
+            pre_execution middlewares run.  An empty list is a valid no-op
+            configuration.
     """
 
     ingress: list[Middleware] = field(default_factory=list)
@@ -43,6 +79,7 @@ class Pipeline:
     execution: list[Middleware] = field(default_factory=list)
     egress: list[Middleware] = field(default_factory=list)
     telemetry: Telemetry | None = field(default=None)
+    security_validators: list[SecurityValidator] = field(default_factory=list)
 
     async def run(self, context: AgentContext) -> AgentContext:
         """Execute all stages in order against *context*.
@@ -75,6 +112,9 @@ class Pipeline:
             if self.telemetry is not None:
                 start_ms = self.telemetry.emit_start(name, context)
             try:
+                if name == "pre_execution":
+                    for validator in self.security_validators:
+                        validator.validate(context)
                 for middleware in middlewares:
                     await middleware(context)
             finally:
