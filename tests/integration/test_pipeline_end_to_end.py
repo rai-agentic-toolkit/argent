@@ -89,12 +89,12 @@ class TestInfiniteLoopToolTimeout:
         budget = RequestBudget(max_calls=10, max_tokens=10_000)
         executor = ToolExecutor(budget=budget, timeout_seconds=0.1)
 
-        calls_before = budget._call_count
+        calls_before = budget.remaining_calls
         with pytest.raises(ToolTimeoutError):
             await executor.execute(time.sleep, 5)
 
         # Budget must not be charged on timeout
-        assert budget._call_count == calls_before
+        assert budget.remaining_calls == calls_before
 
     async def test_fast_tool_does_not_timeout(self) -> None:
         """A tool completing within the timeout does not raise ToolTimeoutError."""
@@ -102,7 +102,7 @@ class TestInfiniteLoopToolTimeout:
         executor = ToolExecutor(budget=budget, timeout_seconds=5.0)
         result = await executor.execute(lambda: "ok", token_cost=10)
         assert result == "ok"
-        assert budget._call_count == 1
+        assert budget.max_calls - budget.remaining_calls == 1
 
 
 class TestBudgetExhaustion:
@@ -115,13 +115,15 @@ class TestBudgetExhaustion:
 
         # First call succeeds
         await executor.execute(lambda: None, token_cost=10)
-        assert budget._call_count == 1
+        assert budget.max_calls - budget.remaining_calls == 1
 
         # Second call must be blocked pre-execution
         with pytest.raises(BudgetExhaustedError) as exc_info:
             await executor.execute(lambda: None, token_cost=10)
         assert exc_info.value.limit_kind == "calls"
-        assert budget._call_count == 1  # budget not incremented by failed pre-check
+        assert (
+            budget.max_calls - budget.remaining_calls == 1
+        )  # budget not incremented by failed pre-check
 
     async def test_token_budget_exhaustion_blocks_call(self) -> None:
         """Token budget exhaustion raises BudgetExhaustedError before tool runs."""
@@ -164,7 +166,7 @@ class TestHappyPathFullPipeline:
         assert isinstance(ctx.parsed_ast, dict)
         assert ctx.parsed_ast == {"query": "SELECT 1"}
         assert tool_results == [{"status": "ok"}]
-        assert budget._call_count == 1
+        assert budget.max_calls - budget.remaining_calls == 1
 
     async def test_happy_path_with_security_validator(self) -> None:
         """Full pipeline with SqlAstValidator passes a safe SELECT payload end-to-end."""
