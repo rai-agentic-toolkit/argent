@@ -17,7 +17,7 @@ This document tracks overall project progress across all phases. Detailed task s
 | **4** | [Semantic Context Shaping — The Trimmer](docs/backlog/phase-4.md) | Complete | 3/3 | ParsedPayload type fix, format-aware truncators, dynamic budget calculator |
 | **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Complete | 4/4 | SecurityValidator protocol, SQL AST validator, integration tests, public API |
 | **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Complete | 3/3 | Working example, thread pool config, depth heuristic improvement |
-| **7** | [Maintenance & Observability](docs/backlog/phase-7.md) | In Progress | 0/3 | Trimmer structured logging, security validator logging, sqlglot version contract |
+| **7** | [Maintenance & Observability](docs/backlog/phase-7.md) | Complete | 3/3 | Trimmer structured logging, security validator logging, sqlglot version contract |
 
 **Total Tasks**: 25
 

@@ -2,8 +2,8 @@
 
 > **Goal**: Close the three open advisories from Phase 4/5 reviews that reduce operator visibility into runtime behaviour: trimmer truncation is silent (ADV-004), the security validator emits to stderr rather than Python logging (ADV-006), and the sqlglot version contract is unbounded with no test to detect silent breakage (ADV-007).
 
-**Status**: In Progress
-**Progress**: 0/3 tasks complete
+**Status**: Complete
+**Progress**: 3/3 tasks complete
 
 **Dependencies**: Phase 6 complete (all epics delivered)
 
@@ -13,9 +13,9 @@
 
 | ID | Task | Status | Dependencies |
 |----|------|--------|--------------|
-| P7-T01 | Trimmer Structured Logging | Not Started | Phase 4 complete |
-| P7-T02 | Security Validator Logging | Not Started | Phase 5 complete |
-| P7-T03 | sqlglot Version Contract Test | Not Started | Phase 5 complete |
+| P7-T01 | Trimmer Structured Logging | Complete | Phase 4 complete |
+| P7-T02 | Security Validator Logging | Complete | Phase 5 complete |
+| P7-T03 | sqlglot Version Contract Test | Complete | Phase 5 complete |
 
 ---
 
@@ -25,7 +25,7 @@
 
 **Advisory reference**: ADV-004 (DevOps, P4 round 2)
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 
@@ -76,7 +76,7 @@ This task converts the stderr diagnostic to `logging.getLogger("argent.security"
 
 **Advisory reference**: ADV-006 (DevOps + QA, P5)
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 
@@ -120,7 +120,7 @@ feat: replace sys.stderr with logging in SqlAstValidator (P7-T02)
 
 **Advisory reference**: ADV-007 (DevOps, P5)
 
-**Status**: Not Started
+**Status**: Complete
 
 ### User Story
 

@@ -8,9 +8,23 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 | ID | Advisory | Target Task | Source |
 |----|----------|-------------|--------|
-| ADV-004 | Trimmer implementations produce no observability signal when truncation occurs. Callers cannot detect output was cut without inspecting the raw string. Future: emit a structured telemetry event (truncation type, chars_dropped) from egress trimming middleware. | P6 or telemetry pass | DevOps (P4 round 2) |
-| ADV-006 | `SqlAstValidator` raises `SecurityViolationError` when `sqlglot.parse` raises unexpectedly (outer except) — emits stderr diagnostic only. A telemetry event on validator failure (blocked or error) would give operators observable counts without requiring caller-side exception catching and re-logging. | P6 | DevOps + QA (P5) |
-| ADV-007 | `sqlglot>=20.0.0` has no upper version bound. `_BLOCKED_STMT_TYPES` class names (`Drop`, `TruncateTable`, etc.) verified against sqlglot 29.0.1. A future sqlglot major release that renames internal AST node classes would silently pass destructive SQL without a test failure. Consider adding an upper bound or an explicit version contract test. | P6 | DevOps (P5) |
+| *(no open items)* | | | |
+
+---
+
+## [2026-03-08] P7-T01/T02/T03 — Maintenance & Observability
+
+### QA
+Phase 7 closes three advisory items (ADV-004, ADV-006, ADV-007) that required structured logging rather than new business logic. 279 tests at 99.43% coverage; all quality gates green. One FINDING fixed: `TestJsonDictTrimmerLogging` was missing a test for the single-key `break`-fallback path in `JsonDictTrimmer.trim()` (the for-loop breaks early when `len(remaining) <= 1`, then falls through to the post-loop return). `test_emits_info_log_on_single_key_fallback_path` added to exercise this path. Pattern established: when a function has multiple early-exit or loop-break paths, each path that should emit a log must have its own dedicated test — coverage alone cannot confirm the log fires on every path.
+
+### UI/UX
+SCOPE: DX/observability review (no UI surface area). Two DX FINDINGs fixed: (1) Inline `[argent.trimmer]` / `[argent.security]` prefixes in log format strings were redundant with `record.name` — removed from all five production log calls. (2) Security-block log was `_logger.info(...)` — a WARNING-filtered production deployment would silence it, making security events invisible in the operator's log stream. Changed to `_logger.warning(...)` and test assertion updated accordingly. Rule established: anything that raises `SecurityViolationError` must be preceded by at least a `logger.warning()` call, tested in the same test class as the exception assertion.
+
+### DevOps
+PASS — all security and operational checks green. gitleaks: clean (log messages contain only integer metrics and SQL keyword constants — no payload content). bandit: 0 issues. pip-audit: no new vulnerability surface. sqlglot upper bound `<30.0.0` added in both `[sql]` and `[dev]` extras with explanatory comment. P7-T03 canary tests act as install-time sentinels: if sqlglot renames `Drop`, `Delete`, `TruncateTable`, or `Alter` AST nodes in a future release, `test_blocked_stmt_type_class_names_exist_in_sqlglot_expressions` fails immediately — before any destructive SQL silently passes validation. Pattern to carry forward: any optional dependency whose internal class names are referenced by production code should have both an upper version bound and a canary test.
+
+### Architecture
+One FINDING fixed: inline logger-name prefix in format strings duplicates `record.name` — redundant and creates a maintenance burden if loggers are renamed. Removed from all production log calls. PASS on all other checklist items: dependency direction is clean (logging added within each Epic's own module), no cross-Epic imports introduced, ADR-0002/0004/0005 all respected. The single-logger-per-Epic pattern (`argent.trimmer`, `argent.security`) is now fully established across all five Epics. No ADR amendments required; this is an additive observability improvement within existing Epic boundaries.
 
 ---
 
