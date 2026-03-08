@@ -18,8 +18,11 @@ This document tracks overall project progress across all phases. Detailed task s
 | **5** | [Pluggable Security Policies — The Guard](docs/backlog/phase-5.md) | Complete | 4/4 | SecurityValidator protocol, SQL AST validator, integration tests, public API |
 | **6** | [Post-MVP Polish](docs/backlog/phase-6.md) | Complete | 3/3 | Working example, thread pool config, depth heuristic improvement |
 | **7** | [Maintenance & Observability](docs/backlog/phase-7.md) | Complete | 3/3 | Trimmer structured logging, security validator logging, sqlglot version contract |
+| **8** | [API Integrity](docs/backlog/phase-8.md) | In Progress | 0/4 | Fix `ContextBudgetCalculator`, rename `parsed_ast` → `parsed_payload`, configurable `SqlAstValidator`, test hygiene; **v0.2.0** |
+| **9** | [Composition & Ergonomics](docs/backlog/phase-9.md) | Not Started | 0/3 | `AgentContext.output`, `TrimmerMiddleware`, corrected example, docs |
+| **10** | [schema-anchor — The Guard's Second Validator](docs/backlog/phase-10.md) | Not Started | 0/3 | `SchemaInspector`, `SchemaDriftDetector`, `SchemaAnchorValidator` + `check_schemas()` |
 
-**Total Tasks**: 25
+**Total Tasks**: 35
 
 ---
 
@@ -54,6 +57,8 @@ All phases must never violate these inviolable laws:
 | BR-02 | No Blind Truncation | Phase 4 |
 | BR-03 | Semantic Over Syntactic Security | Phase 5 |
 | BR-04 | Pre-Allocation Limits | Phase 2 |
+| BR-05 | Egress Output Integrity — egress middlewares operate on `context.output` | Phase 9 |
+| BR-06 | Schema Integrity — registered tool schemas must match callable signatures at startup | Phase 10 |
 
 ---
 
@@ -66,6 +71,9 @@ All phases must never violate these inviolable laws:
 | [ADR-0003](docs/adr/ADR-0003-xml-security-dep.md) | XML Security Dependency (defusedxml) | P2 |
 | [ADR-0004](docs/adr/ADR-0004-budget-context-coupling.md) | Budget/Context Coupling, Async Executor & custom Executor injection | P3/P6 |
 | [ADR-0005](docs/adr/ADR-0005-optional-sql-dependency.md) | Optional SQL dependency (sqlglot); examples extra exemption | P5/P6 |
+| ADR-0006 | v0.2.0 breaking changes — `parsed_payload` rename; `ContextBudgetCalculator` fix | P8 |
+| ADR-0007 | `AgentContext.output` field; `TrimmerMiddleware` composition pattern; BR-05 | P9 |
+| ADR-0008 | Schema Anchor — startup-time tool-schema drift detection; BR-06 | P10 |
 
 ---
 
