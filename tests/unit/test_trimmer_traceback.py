@@ -6,6 +6,12 @@ before src/argent/trimmer/traceback.py exists.
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
+
 from argent.trimmer.base import Trimmer
 from argent.trimmer.traceback import PythonTracebackTrimmer
 
@@ -81,3 +87,39 @@ class TestPythonTracebackTrimmerTruncation:
         once = trimmer.trim(SAMPLE_TRACEBACK)
         # once == SAMPLE_TRACEBACK (fits); a second trim should also leave it unchanged
         assert trimmer.trim(once) == once
+
+
+# ---------------------------------------------------------------------------
+# P7-T01 RED: Trimmer structured logging
+# ---------------------------------------------------------------------------
+
+
+class TestPythonTracebackTrimmerLogging:
+    """P7-T01: PythonTracebackTrimmer emits INFO log to argent.trimmer on truncation.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL until
+    traceback.py emits logging.getLogger("argent.trimmer").info(...) on the
+    truncation path.
+    """
+
+    def test_emits_info_log_when_content_cut(self, caplog: pytest.LogCaptureFixture) -> None:
+        """An INFO record is emitted to argent.trimmer when the traceback is truncated."""
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            PythonTracebackTrimmer(max_chars=50).trim(SAMPLE_TRACEBACK)
+        assert any(r.levelno == logging.INFO for r in caplog.records)
+
+    def test_log_record_includes_chars_dropped_and_max_chars(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The INFO log message includes both chars_dropped and max_chars."""
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            PythonTracebackTrimmer(max_chars=50).trim(SAMPLE_TRACEBACK)
+        messages = [r.message for r in caplog.records]
+        assert any("chars_dropped" in m for m in messages)
+        assert any("max_chars" in m for m in messages)
+
+    def test_no_log_when_content_fits(self, caplog: pytest.LogCaptureFixture) -> None:
+        """No log is emitted when the traceback fits within the budget."""
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            PythonTracebackTrimmer(max_chars=10_000).trim(SAMPLE_TRACEBACK)
+        assert not caplog.records

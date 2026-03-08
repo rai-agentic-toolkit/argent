@@ -4,6 +4,7 @@ CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
 before src/argent/security/sql_validator.py exists.
 """
 
+import logging
 import sys
 
 import pytest
@@ -11,7 +12,11 @@ import sqlglot
 
 from argent.pipeline.context import AgentContext
 from argent.security.exceptions import SecurityViolationError
-from argent.security.sql_validator import SqlAstValidator
+from argent.security.sql_validator import (
+    _BLOCKED_STMT_TYPES,
+    _STMT_TYPE_TO_KEYWORD,
+    SqlAstValidator,
+)
 
 
 class TestSqlAstValidatorConstruction:
@@ -90,18 +95,18 @@ class TestSqlAstValidatorEdgeCases:
         ctx.parsed_ast = "some sql"
         SqlAstValidator().validate(ctx)  # must not raise
 
-    def test_handles_unexpected_sqlglot_error_with_stderr_diagnostic(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    def test_handles_unexpected_sqlglot_error_with_warning_log(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """When sqlglot.parse raises an unexpected error, validator returns and emits to stderr."""
+        """When sqlglot.parse raises an unexpected error, validator returns and logs a WARNING."""
         monkeypatch.setattr(
             sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("unexpected"))
         )
         ctx = AgentContext(raw_payload=b"sql")
         ctx.parsed_ast = "some sql"
-        SqlAstValidator().validate(ctx)  # must not raise
-        captured = capsys.readouterr()
-        assert "[argent.security]" in captured.err
+        with caplog.at_level(logging.WARNING, logger="argent.security"):
+            SqlAstValidator().validate(ctx)  # must not raise
+        assert any("SqlAstValidator" in r.message for r in caplog.records)
 
 
 class TestSqlAstValidatorBlockingCases:
@@ -150,3 +155,109 @@ class TestSqlAstValidatorBlockingCases:
         ctx.parsed_ast = "DROP  \t\n  TABLE users"
         with pytest.raises(SecurityViolationError):
             SqlAstValidator().validate(ctx)
+
+
+# ---------------------------------------------------------------------------
+# P7-T02 RED: Security validator structured logging
+# ---------------------------------------------------------------------------
+
+
+class TestSqlAstValidatorLogging:
+    """P7-T02: SqlAstValidator emits to Python logging, not sys.stderr.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL until
+    sql_validator.py replaces sys.stderr.write with logger.warning and adds
+    logger.info before raising SecurityViolationError.
+    """
+
+    def test_blocked_statement_emits_warning_log(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A WARNING record is emitted to argent.security when a statement is blocked."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DROP TABLE users"
+        with (
+            caplog.at_level(logging.WARNING, logger="argent.security"),
+            pytest.raises(SecurityViolationError),
+        ):
+            SqlAstValidator().validate(ctx)
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+    def test_blocked_statement_log_includes_keyword(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The WARNING log message includes the blocked SQL keyword."""
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "DROP TABLE users"
+        with (
+            caplog.at_level(logging.WARNING, logger="argent.security"),
+            pytest.raises(SecurityViolationError),
+        ):
+            SqlAstValidator().validate(ctx)
+        assert any("DROP" in r.message for r in caplog.records)
+
+    def test_unexpected_error_emits_warning_log_not_stderr(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Unexpected sqlglot error emits WARNING to argent.security (not stderr)."""
+        monkeypatch.setattr(
+            sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("unexpected"))
+        )
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "some sql"
+        with caplog.at_level(logging.WARNING, logger="argent.security"):
+            SqlAstValidator().validate(ctx)
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+    def test_unexpected_error_no_longer_writes_to_stderr(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Unexpected sqlglot error must NOT write to stderr after P7-T02 GREEN."""
+        monkeypatch.setattr(
+            sqlglot, "parse", lambda _: (_ for _ in ()).throw(RuntimeError("unexpected"))
+        )
+        ctx = AgentContext(raw_payload=b"sql")
+        ctx.parsed_ast = "some sql"
+        SqlAstValidator().validate(ctx)
+        captured = capsys.readouterr()
+        assert captured.err == ""
+
+
+# ---------------------------------------------------------------------------
+# P7-T03 RED: sqlglot version contract
+# ---------------------------------------------------------------------------
+
+
+class TestSqlglotVersionContract:
+    """P7-T03: sqlglot AST class names used in _BLOCKED_STMT_TYPES must exist.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL if
+    the sqlglot upper bound is not set or the class names are renamed in
+    a future sqlglot release.
+
+    The tests are skipped (not failed) when sqlglot is not installed.
+    """
+
+    def test_blocked_stmt_type_class_names_exist_in_sqlglot_expressions(self) -> None:
+        """Every class name in _BLOCKED_STMT_TYPES exists as an attribute on sqlglot.expressions."""
+        sqlglot_expressions = pytest.importorskip("sqlglot.expressions")
+        for class_name in _BLOCKED_STMT_TYPES:
+            assert hasattr(sqlglot_expressions, class_name), (
+                f"sqlglot.expressions.{class_name} not found — sqlglot may have "
+                f"renamed this AST node. Update _BLOCKED_STMT_TYPES in sql_validator.py."
+            )
+
+    def test_stmt_type_to_keyword_keys_exist_in_sqlglot_expressions(self) -> None:
+        """Every key in _STMT_TYPE_TO_KEYWORD corresponds to a class in sqlglot.expressions."""
+        sqlglot_expressions = pytest.importorskip("sqlglot.expressions")
+        for class_name in _STMT_TYPE_TO_KEYWORD:
+            assert hasattr(sqlglot_expressions, class_name), (
+                f"sqlglot.expressions.{class_name} not found — sqlglot may have "
+                f"renamed this AST node. Update _STMT_TYPE_TO_KEYWORD in sql_validator.py."
+            )
+
+    def test_blocked_stmt_type_names_are_actual_expression_classes(self) -> None:
+        """Each name in _BLOCKED_STMT_TYPES maps to an actual class, not just an attribute."""
+        sqlglot_expressions = pytest.importorskip("sqlglot.expressions")
+        for class_name in _BLOCKED_STMT_TYPES:
+            obj = getattr(sqlglot_expressions, class_name, None)
+            assert isinstance(obj, type), (
+                f"sqlglot.expressions.{class_name} exists but is not a class "
+                f"(got {type(obj).__name__})."
+            )

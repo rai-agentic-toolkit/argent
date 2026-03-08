@@ -7,6 +7,11 @@ before src/argent/trimmer/json_trimmer.py exists.
 from __future__ import annotations
 
 import json
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
 
 from argent.trimmer.json_trimmer import JsonArrayTrimmer, JsonDictTrimmer
 
@@ -166,3 +171,87 @@ class TestJsonDictTrimmerTruncation:
         parsed = json.loads(result)
         assert "small" in parsed
         assert "large" not in parsed
+
+
+# ---------------------------------------------------------------------------
+# P7-T01 RED: Trimmer structured logging
+# ---------------------------------------------------------------------------
+
+
+class TestJsonArrayTrimmerLogging:
+    """P7-T01: JsonArrayTrimmer emits INFO log to argent.trimmer on truncation.
+
+    CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL until
+    json_trimmer.py emits logging.getLogger("argent.trimmer").info(...) on
+    the truncation path.
+    """
+
+    def test_emits_info_log_when_items_dropped(self, caplog: pytest.LogCaptureFixture) -> None:
+        """An INFO record is emitted to argent.trimmer when items are dropped."""
+        items = list(range(100))
+        content = json.dumps(items)
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonArrayTrimmer(max_chars=50).trim(content)
+        assert any(r.levelno == logging.INFO for r in caplog.records)
+
+    def test_log_record_includes_chars_dropped(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The INFO log message includes chars_dropped."""
+        items = list(range(100))
+        content = json.dumps(items)
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonArrayTrimmer(max_chars=50).trim(content)
+        assert any("chars_dropped" in r.message for r in caplog.records)
+
+    def test_no_log_when_content_fits(self, caplog: pytest.LogCaptureFixture) -> None:
+        """No log is emitted when content is within the budget."""
+        content = json.dumps([1, 2, 3])
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonArrayTrimmer(max_chars=10_000).trim(content)
+        assert not caplog.records
+
+    def test_no_log_for_non_json_content(self, caplog: pytest.LogCaptureFixture) -> None:
+        """No log is emitted when content cannot be parsed as JSON."""
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonArrayTrimmer(max_chars=5).trim("not json")
+        assert not caplog.records
+
+
+class TestJsonDictTrimmerLogging:
+    """P7-T01: JsonDictTrimmer emits INFO log to argent.trimmer on truncation."""
+
+    def test_emits_info_log_when_keys_dropped(self, caplog: pytest.LogCaptureFixture) -> None:
+        """An INFO record is emitted to argent.trimmer when keys are dropped."""
+        d = {f"key_{i}": "v" * 100 for i in range(10)}
+        content = json.dumps(d)
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonDictTrimmer(max_chars=50).trim(content)
+        assert any(r.levelno == logging.INFO for r in caplog.records)
+
+    def test_log_record_includes_max_chars(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The INFO log message includes max_chars."""
+        d = {f"key_{i}": "v" * 100 for i in range(10)}
+        content = json.dumps(d)
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonDictTrimmer(max_chars=50).trim(content)
+        assert any("max_chars" in r.message for r in caplog.records)
+
+    def test_no_log_when_content_fits(self, caplog: pytest.LogCaptureFixture) -> None:
+        """No log is emitted when content is within the budget."""
+        content = json.dumps({"a": 1})
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonDictTrimmer(max_chars=10_000).trim(content)
+        assert not caplog.records
+
+    def test_emits_info_log_on_single_key_fallback_path(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """INFO log fires on the single-key break-fallback path (lines 144-151).
+
+        When the dict has exactly one key that cannot fit in budget, the for-loop
+        breaks immediately (len(remaining) <= 1) before any candidate fits, then
+        falls through to the post-loop return. This path must also emit the log.
+        """
+        content = json.dumps({"only": "x" * 100})
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonDictTrimmer(max_chars=5).trim(content)
+        assert any(r.levelno == logging.INFO for r in caplog.records)
