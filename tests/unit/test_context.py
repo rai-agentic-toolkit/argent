@@ -1,32 +1,16 @@
 """Tests for AgentContext state machine object.
 
-CONSTITUTION Priority 3: TDD RED Phase — these tests must FAIL
-before src/argent/pipeline/context.py exists.
+P8-T04: Remove enum existence theater; add meaningful lifecycle test.
 """
 
 import pytest
 
 from argent.pipeline.context import AgentContext, ExecutionState
+from argent.pipeline.pipeline import Pipeline
 
 
 class TestExecutionState:
     """Tests for the ExecutionState enum."""
-
-    def test_has_pending(self) -> None:
-        """ExecutionState exposes a PENDING variant."""
-        assert ExecutionState.PENDING
-
-    def test_has_running(self) -> None:
-        """ExecutionState exposes a RUNNING variant."""
-        assert ExecutionState.RUNNING
-
-    def test_has_halted(self) -> None:
-        """ExecutionState exposes a HALTED variant."""
-        assert ExecutionState.HALTED
-
-    def test_has_complete(self) -> None:
-        """ExecutionState exposes a COMPLETE variant."""
-        assert ExecutionState.COMPLETE
 
     def test_values_are_distinct(self) -> None:
         """All four ExecutionState variants have distinct values."""
@@ -128,3 +112,30 @@ class TestAgentContextStateTransitions:
         ctx.execution_state = ExecutionState.RUNNING
         ctx.execution_state = ExecutionState.HALTED
         assert ctx.execution_state is ExecutionState.HALTED
+
+    async def test_execution_state_lifecycle(self) -> None:
+        """ADR-0002 state machine: PENDING → RUNNING → COMPLETE; stays RUNNING on raise.
+
+        Three invariants from the state machine contract:
+        1. A fresh AgentContext starts at PENDING.
+        2. After pipeline.run() completes without raising, state is COMPLETE.
+        3. When a middleware raises without setting HALTED, state stays RUNNING.
+        """
+        # Invariant 1: fresh context starts at PENDING
+        ctx = AgentContext(raw_payload=b"data")
+        assert ctx.execution_state is ExecutionState.PENDING
+
+        # Invariant 2: successful run → COMPLETE
+        pipeline = Pipeline()
+        await pipeline.run(ctx)
+        assert ctx.execution_state is ExecutionState.COMPLETE
+
+        # Invariant 3: middleware raises → state stays RUNNING (not COMPLETE)
+        async def raising_middleware(c: AgentContext) -> None:
+            raise RuntimeError("injected failure")
+
+        ctx2 = AgentContext(raw_payload=b"data")
+        pipeline2 = Pipeline(ingress=[raising_middleware])
+        with pytest.raises(RuntimeError):
+            await pipeline2.run(ctx2)
+        assert ctx2.execution_state is ExecutionState.RUNNING
