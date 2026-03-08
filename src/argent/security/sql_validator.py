@@ -92,7 +92,7 @@ class SqlAstValidator:
             # Unexpected sqlglot error — emit a diagnostic and allow the payload through.
             # The database layer is the final authority on malformed or unusual input.
             _logger.warning(
-                "[argent.security] SqlAstValidator: unexpected error from sqlglot.parse: %s: %s",
+                "SqlAstValidator: unexpected error from sqlglot.parse: %s: %s",
                 type(exc).__name__,
                 exc,
             )
@@ -104,8 +104,8 @@ class SqlAstValidator:
             stmt_type = type(stmt).__name__
             if stmt_type in _BLOCKED_STMT_TYPES:
                 keyword = _STMT_TYPE_TO_KEYWORD.get(stmt_type, stmt_type)
-                _logger.info(
-                    "[argent.security] SqlAstValidator: blocked %s statement",
+                _logger.warning(
+                    "SqlAstValidator: blocked %s statement",
                     keyword,
                 )
                 raise SecurityViolationError(

@@ -241,3 +241,17 @@ class TestJsonDictTrimmerLogging:
         with caplog.at_level(logging.INFO, logger="argent.trimmer"):
             JsonDictTrimmer(max_chars=10_000).trim(content)
         assert not caplog.records
+
+    def test_emits_info_log_on_single_key_fallback_path(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """INFO log fires on the single-key break-fallback path (lines 144-151).
+
+        When the dict has exactly one key that cannot fit in budget, the for-loop
+        breaks immediately (len(remaining) <= 1) before any candidate fits, then
+        falls through to the post-loop return. This path must also emit the log.
+        """
+        content = json.dumps({"only": "x" * 100})
+        with caplog.at_level(logging.INFO, logger="argent.trimmer"):
+            JsonDictTrimmer(max_chars=5).trim(content)
+        assert any(r.levelno == logging.INFO for r in caplog.records)

@@ -106,7 +106,7 @@ class TestSqlAstValidatorEdgeCases:
         ctx.parsed_ast = "some sql"
         with caplog.at_level(logging.WARNING, logger="argent.security"):
             SqlAstValidator().validate(ctx)  # must not raise
-        assert any("[argent.security]" in r.message for r in caplog.records)
+        assert any("SqlAstValidator" in r.message for r in caplog.records)
 
 
 class TestSqlAstValidatorBlockingCases:
@@ -170,23 +170,23 @@ class TestSqlAstValidatorLogging:
     logger.info before raising SecurityViolationError.
     """
 
-    def test_blocked_statement_emits_info_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """An INFO record is emitted to argent.security when a statement is blocked."""
+    def test_blocked_statement_emits_warning_log(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A WARNING record is emitted to argent.security when a statement is blocked."""
         ctx = AgentContext(raw_payload=b"sql")
         ctx.parsed_ast = "DROP TABLE users"
         with (
-            caplog.at_level(logging.INFO, logger="argent.security"),
+            caplog.at_level(logging.WARNING, logger="argent.security"),
             pytest.raises(SecurityViolationError),
         ):
             SqlAstValidator().validate(ctx)
-        assert any(r.levelno == logging.INFO for r in caplog.records)
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
 
     def test_blocked_statement_log_includes_keyword(self, caplog: pytest.LogCaptureFixture) -> None:
-        """The INFO log message includes the blocked SQL keyword."""
+        """The WARNING log message includes the blocked SQL keyword."""
         ctx = AgentContext(raw_payload=b"sql")
         ctx.parsed_ast = "DROP TABLE users"
         with (
-            caplog.at_level(logging.INFO, logger="argent.security"),
+            caplog.at_level(logging.WARNING, logger="argent.security"),
             pytest.raises(SecurityViolationError),
         ):
             SqlAstValidator().validate(ctx)

@@ -44,7 +44,7 @@ class PythonTracebackTrimmer:
         marker = f"[... {dropped} chars truncated ...]\n"
         result = marker + tail
         _logger.info(
-            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            "%s: chars_dropped=%d max_chars=%d",
             self.__class__.__name__,
             dropped,
             self._max_chars,

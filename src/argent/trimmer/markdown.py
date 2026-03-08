@@ -69,7 +69,7 @@ class MarkdownTableTrimmer:
             candidate = "\n".join([header, separator, *kept_rows])
             if len(candidate) <= self._max_chars:
                 _logger.info(
-                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    "%s: chars_dropped=%d max_chars=%d",
                     self.__class__.__name__,
                     len(content) - len(candidate),
                     self._max_chars,
@@ -80,7 +80,7 @@ class MarkdownTableTrimmer:
         # Only header + separator remain
         result = "\n".join([header, separator])
         _logger.info(
-            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            "%s: chars_dropped=%d max_chars=%d",
             self.__class__.__name__,
             len(content) - len(result),
             self._max_chars,

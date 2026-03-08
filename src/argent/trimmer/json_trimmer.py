@@ -64,7 +64,7 @@ class JsonArrayTrimmer:
             candidate = json.dumps(candidate_items)
             if len(candidate) <= self._max_chars:
                 _logger.info(
-                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    "%s: chars_dropped=%d max_chars=%d",
                     self.__class__.__name__,
                     len(content) - len(candidate),
                     self._max_chars,
@@ -76,7 +76,7 @@ class JsonArrayTrimmer:
         tombstone = f"... [{original_len} items truncated]"
         result = json.dumps([tombstone])
         _logger.info(
-            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            "%s: chars_dropped=%d max_chars=%d",
             self.__class__.__name__,
             len(content) - len(result),
             self._max_chars,
@@ -133,7 +133,7 @@ class JsonDictTrimmer:
             candidate = json.dumps(remaining)
             if len(candidate) <= self._max_chars:
                 _logger.info(
-                    "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+                    "%s: chars_dropped=%d max_chars=%d",
                     self.__class__.__name__,
                     len(content) - len(candidate),
                     self._max_chars,
@@ -143,7 +143,7 @@ class JsonDictTrimmer:
         # Reached when break fires (len(remaining) == 1): return the single remaining key.
         result = json.dumps(remaining)
         _logger.info(
-            "[argent.trimmer] %s: chars_dropped=%d max_chars=%d",
+            "%s: chars_dropped=%d max_chars=%d",
             self.__class__.__name__,
             len(content) - len(result),
             self._max_chars,
