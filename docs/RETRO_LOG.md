@@ -12,6 +12,22 @@ Living ledger of review retrospective notes, appended after each completed task.
 
 ---
 
+## [2026-03-09] docs/data-story — Argent Data Story Report
+
+### QA
+FINDING (fixed) — two findings. (1) `xychart-beta` Mermaid chart type used in Section 4 was not supported by GitHub's Mermaid renderer; would produce a raw code block. Fixed: replaced with a plain markdown table. (2) `advisory_lifecycle()` docstring described "lifecycle extraction" but the function only reads the Open Advisory Items table. Known limitation documented. 23/23 unit tests pass with isolated synthetic fixtures.
+
+### UI/UX
+FINDING (fixed) — two findings, one shared with QA. (1) `xychart-beta` chart. (2) Section 5 Coverage column table separator missing trailing colon for right-alignment. Fixed. SKIP on accessibility: all applicable WCAG 2.1 AA criteria pass for static markdown on GitHub.
+
+### DevOps
+FINDING (fixed) — two findings. (1) `coverage.json` (generated at repo root by `pytest-cov`) was not gitignored. Added to `.gitignore`. (2) `metrics.json` committed with `"repo_root"` containing an absolute local developer machine path — replaced with a descriptive placeholder. PASS: bandit clean (nosec B404/B603/B607 with justifications), gitleaks clean, no network access, no modification of production files.
+
+### Architecture
+FINDING (fixed) — two findings. (1) `_EPICS` and `_COMMIT_TYPES` constants declared in `collect_metrics.py` but never used — the implementation chose dynamic filesystem discovery and a hardcoded regex alternation. Constants removed; regex is now sole source of truth. (2) `_COMMIT_RE` alternation is not derived from a list constant; a new commit type requires a regex update — documented as maintenance requirement. PASS: `docs/data_story/` does not touch any `src/argent/` subpackage; ADR-0001 topology preserved. ADVISORY: `advisory_lifecycle()` full lifecycle tracking deferred.
+
+---
+
 ## [2026-03-08] P7-T01/T02/T03 — Maintenance & Observability
 
 ### QA
