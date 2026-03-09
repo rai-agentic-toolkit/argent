@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "generated_at": "2026-03-09",
+    "repo_root": "(local \u2014 run collect_metrics.py to regenerate)",
+    "branch": "main"
+  },
+  "commits": {
+    "total": 102,
+    "by_type": {
+      "docs": 20,
+      "review": 37,
+      "fix": 8,
+      "feat": 10,
+      "test": 12,
+      "refactor": 1,
+      "chore": 3
+    }
+  },
+  "review": {
+    "by_persona": {
+      "arch": {
+        "FINDING": 7,
+        "PASS": 1,
+        "SKIP": 1
+      },
+      "devops": {
+        "PASS": 8,
+        "FINDING": 1
+      },
+      "ui-ux": {
+        "FINDING": 3,
+        "SKIP": 6
+      },
+      "qa": {
+        "FINDING": 7,
+        "PASS": 2,
+        "SKIP": 1
+      }
+    }
+  },
+  "loc": {
+    "by_epic": {
+      "pipeline": {
+        "src": 234,
+        "test": 163,
+        "test_to_src_ratio": 0.7
+      },
+      "ingress": {
+        "src": 229,
+        "test": 354,
+        "test_to_src_ratio": 1.55
+      },
+      "security": {
+        "src": 107,
+        "test": 123,
+        "test_to_src_ratio": 1.15
+      },
+      "trimmer": {
+        "src": 298,
+        "test": 401,
+        "test_to_src_ratio": 1.35
+      },
+      "budget": {
+        "src": 238,
+        "test": 190,
+        "test_to_src_ratio": 0.8
+      }
+    },
+    "total_src": 1106,
+    "total_test": 1231,
+    "overall_ratio": 1.11
+  },
+  "coverage": {
+    "line_pct": 99.43,
+    "test_count": 279
+  },
+  "advisories": []
+}
