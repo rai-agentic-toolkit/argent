@@ -31,25 +31,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _RETRO_LOG = _REPO_ROOT / "docs" / "RETRO_LOG.md"
 _METRICS_OUT = Path(__file__).resolve().parent / "metrics.json"
 
-#: Epics that constitute the ARG middleware structure (ADR-0001).
-_EPICS = ("pipeline", "ingress", "budget", "trimmer", "security")
-
-#: Conventional commit types tracked in this project.
-_COMMIT_TYPES = (
-    "feat",
-    "fix",
-    "test",
-    "refactor",
-    "docs",
-    "chore",
-    "build",
-    "ci",
-    "style",
-    "perf",
-    "revert",
-    "review",
-    "bump",
-)
 
 #: Pattern to match a conventional commit subject line (with hash prefix from git log).
 _COMMIT_RE = re.compile(
@@ -305,7 +286,7 @@ def main() -> None:
     metrics: dict[str, Any] = {
         "meta": {
             "generated_at": "2026-03-09",
-            "repo_root": str(_REPO_ROOT),
+            "repo_root": "(local — run collect_metrics.py to regenerate)",
             "branch": "main",
         },
         "commits": {

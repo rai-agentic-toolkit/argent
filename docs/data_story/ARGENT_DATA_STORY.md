@@ -97,15 +97,12 @@ Each phase triggers four parallel reviewer personas: `qa`, `ui-ux`, `devops`, an
 | `devops` | 8 | 1 | 0 | 9 |
 | `ui-ux` | 0 | 3 | **6** | 9 |
 
-```mermaid
-xychart-beta
-    title "Review Verdicts by Persona"
-    x-axis [arch, qa, devops, ui-ux]
-    y-axis "Commits" 0 --> 10
-    bar [7, 7, 1, 3]
-    bar [1, 2, 8, 0]
-    bar [1, 1, 0, 6]
-```
+| Reviewer | FINDING | PASS | SKIP |
+|----------|--------:|-----:|-----:|
+| `arch`   | 7       | 1    | 1    |
+| `qa`     | 7       | 2    | 1    |
+| `ui-ux`  | 3       | 0    | 6    |
+| `devops` | 1       | 8    | 0    |
 
 ### Reading the data
 
@@ -139,7 +136,7 @@ All four reviewer personas share the same underlying model. A legitimate concern
 The project is structured as five strictly-isolated Epic subpackages per ADR-0001.
 
 | Epic | Src LOC | Test LOC | Ratio | Coverage |
-|------|--------:|---------:|------:|---------|
+|------|--------:|---------:|------:|---------:|
 | `pipeline` | 234 | 163 | 0.70 : 1 | 99%+ |
 | `ingress` | 229 | 354 | 1.55 : 1 | 99%+ |
 | `budget` | 238 | 190 | 0.80 : 1 | 99%+ |
